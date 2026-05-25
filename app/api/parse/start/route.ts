@@ -1,37 +1,37 @@
 // POST /api/parse/start
-// Accepts multipart/form-data with `file` + `filename` + optional
-// `parsing_instruction`. Forwards to LlamaParse using the server-only
-// LLAMA_CLOUD_API_KEY and returns the job_id to the client.
+// Body: { key: string, filename: string, parsing_instruction?: string }
 //
-// File size is bounded by Vercel's function body cap (~4.5 MB on Hobby).
-// lib/compress.ts shrinks PDFs/PPTX below that before upload.
+// Fetches the file from R2 (no body cap because the file never traverses the
+// Vercel function as request body — we GET it from R2). Forwards to LlamaParse,
+// returns the job_id, and deletes the R2 object immediately.
 
 import { NextResponse } from "next/server";
+import { deleteObject, fetchObject } from "@/lib/r2";
 import { startParseJob } from "@/lib/llamaparse";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+type Body = {
+  key: string;
+  filename: string;
+  parsing_instruction?: string;
+};
+
 export async function POST(req: Request) {
-  let formData: FormData;
+  let body: Body;
   try {
-    formData = await req.formData();
+    body = (await req.json()) as Body;
   } catch {
-    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-
-  const file = formData.get("file");
-  const filename = formData.get("filename")?.toString() || "";
-  const parsingInstruction =
-    formData.get("parsing_instruction")?.toString() || undefined;
-
-  if (!(file instanceof Blob) || !filename) {
+  if (!body.key || !body.filename) {
     return NextResponse.json(
-      { error: "Missing file or filename" },
+      { error: "Missing key or filename" },
       { status: 400 }
     );
   }
-  if (!filename.toLowerCase().match(/\.(pptx?|ppt|pdf)$/)) {
+  if (!body.filename.toLowerCase().match(/\.(pptx?|ppt|pdf)$/)) {
     return NextResponse.json(
       { error: "Only .pptx / .ppt / .pdf files are supported" },
       { status: 400 }
@@ -39,7 +39,21 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await startParseJob(file, filename, parsingInstruction);
+    const fileBlob = await fetchObject(body.key);
+
+    const result = await startParseJob(
+      fileBlob,
+      body.filename,
+      body.parsing_instruction || undefined
+    );
+
+    // Best-effort cleanup. Free tier R2 has plenty of room if this fails.
+    try {
+      await deleteObject(body.key);
+    } catch {
+      // ignore
+    }
+
     return NextResponse.json(result);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
