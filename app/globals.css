@@ -188,22 +188,46 @@ pre,
   }
 }
 
-/* Monaco find / replace widget — keep it visually unobtrusive and clear of
- * the very top edge so the close button is reachable. The default top
- * offset and heavy drop-shadow make it feel like a modal hijack; we soften
- * both. The duplicate "Escape" tooltip flicker came from a stacked hover
- * region; collapsing pointer-events on Monaco's hidden hover overlay above
- * the widget removes the second tooltip. */
+/* Monaco find / replace widget — push it off the very top edge so the close
+ * button isn't glued to the title bar, and tone down the heavy default
+ * drop-shadow into something more in line with the rest of the UI. */
 .monaco-editor .find-widget {
   top: 8px !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
   border: 1px solid #e4e4e7 !important;
 }
-.monaco-editor .overflowingContentWidgets {
-  pointer-events: none;
+
+/* Native title tooltips are stripped at the JS layer (StandardizedView). They
+ * caused a flicker loop because the tooltip itself overlaps the next button
+ * and steals hover. We replace them with a CSS-only tooltip that only
+ * appears after the cursor has actually rested for 2 seconds — quick hovers
+ * stay silent, no chance to flicker. */
+.monaco-editor .find-widget [aria-label] {
+  position: relative;
 }
-.monaco-editor .overflowingContentWidgets > * {
-  pointer-events: auto;
+.monaco-editor .find-widget [aria-label]:hover::after {
+  content: attr(aria-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 27, 0.92);
+  color: #fafafa;
+  font-size: 11px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  animation: find-tooltip-delay 0.15s linear 2s forwards;
+}
+@keyframes find-tooltip-delay {
+  to {
+    opacity: 1;
+  }
 }
 
 /* Markdown preview */
