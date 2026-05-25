@@ -298,6 +298,7 @@ function CodePane({
         onChange={onChange}
         onMount={(editor) => {
           if (onMount) onMount(editor as unknown as EditorInstance);
+          stripFindWidgetTitles(editor);
         }}
         options={{
           readOnly: !onChange,
@@ -333,6 +334,7 @@ function CodePane({
             defaultLanguage="markdown"
             theme="vs"
             value={parsedMarkdown}
+            onMount={(editor) => stripFindWidgetTitles(editor)}
             options={{
               readOnly: true,
               domReadOnly: true,
@@ -445,4 +447,27 @@ function MarkdownPreview({ source }: { source: string }) {
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{source}</ReactMarkdown>
     </div>
   );
+}
+
+/**
+ * Monaco's find/replace widget renders BOTH a browser-native tooltip (from
+ * `title="Close (Escape)"`) and its own DOM hover hint. They overlap, the
+ * native one steals pointer focus, and the result is a hover-flicker loop on
+ * the close + toggle buttons. Stripping the native `title` attributes leaves
+ * only Monaco's hint, killing the flicker.
+ */
+function stripFindWidgetTitles(editor: unknown) {
+  const ed = editor as { getDomNode?: () => HTMLElement | null };
+  const root = ed.getDomNode?.();
+  if (!root) return;
+  const strip = () => {
+    root
+      .querySelectorAll(".find-widget [title]")
+      .forEach((el) => el.removeAttribute("title"));
+  };
+  strip();
+  new MutationObserver(strip).observe(root, {
+    childList: true,
+    subtree: true,
+  });
 }
