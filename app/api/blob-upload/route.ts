@@ -85,7 +85,9 @@ export async function POST(request: Request) {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        // Limit what the browser can upload — extension-based gate.
+        // Extension-based gate. We accept the modern PPTX mime, the legacy PPT
+        // mime, the PDF mime, and a generic fallback because some browsers
+        // don't set file.type for drag-and-drop or bin-typed uploads.
         const lower = pathname.toLowerCase();
         const ok =
           lower.endsWith(".pdf") ||
@@ -100,22 +102,18 @@ export async function POST(request: Request) {
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.ms-powerpoint",
             "application/octet-stream",
+            "binary/octet-stream",
           ],
-          // 30 minutes is more than enough; LlamaParse pull happens within seconds
-          // of upload completion, but we leave room for slow networks.
-          validUntil: Date.now() + 30 * 60 * 1000,
           addRandomSuffix: true,
         };
       },
       onUploadCompleted: async () => {
-        // Nothing to do — /api/parse/start consumes the URL next.
+        // /api/parse/start consumes the URL next; nothing to do here.
       },
     });
     return NextResponse.json(jsonResponse);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Upload token failure";
-    // Surface the underlying Vercel Blob error verbatim so the browser console
-    // shows what actually went wrong (token missing, scope issue, etc).
     console.error("[/api/blob-upload] error:", e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
