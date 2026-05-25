@@ -50,12 +50,6 @@ export function FrontmatterForm({
         onChange={(v) => update("course_name", v)}
         placeholder="Full document name"
       />
-      <Field
-        label="entity_name"
-        value={form.entity_name}
-        onChange={(v) => update("entity_name", v)}
-        placeholder="Amartha"
-      />
 
       <label className="block">
         <span className="text-[10px] uppercase text-muted tracking-wider font-medium">
