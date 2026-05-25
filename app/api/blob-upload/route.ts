@@ -104,7 +104,6 @@ export async function POST(request: Request) {
             "application/octet-stream",
             "binary/octet-stream",
           ],
-          addRandomSuffix: true,
         };
       },
       onUploadCompleted: async () => {
