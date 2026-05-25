@@ -450,24 +450,44 @@ function MarkdownPreview({ source }: { source: string }) {
 }
 
 /**
- * Monaco's find/replace widget renders BOTH a browser-native tooltip (from
- * `title="Close (Escape)"`) and its own DOM hover hint. They overlap, the
- * native one steals pointer focus, and the result is a hover-flicker loop on
- * the close + toggle buttons. Stripping the native `title` attributes leaves
- * only Monaco's hint, killing the flicker.
+ * Monaco's find/replace widget renders a browser-native tooltip from the
+ * `title="Close (Escape)"` attribute on its buttons. The tooltip is two lines
+ * tall and overlaps the button below it; the cursor briefly enters that
+ * second button on tooltip render, the tooltip dismisses, the cursor returns,
+ * and you get a flicker loop.
+ *
+ * Fix: walk the editor DOM and strip every `title` under `.find-widget`. A
+ * MutationObserver re-strips when Monaco re-adds it on state changes (focus,
+ * hover, toggle). The flag guards against the strip itself feeding back into
+ * the observer.
  */
 function stripFindWidgetTitles(editor: unknown) {
   const ed = editor as { getDomNode?: () => HTMLElement | null };
   const root = ed.getDomNode?.();
   if (!root) return;
+
+  let stripping = false;
   const strip = () => {
-    root
-      .querySelectorAll(".find-widget [title]")
-      .forEach((el) => el.removeAttribute("title"));
+    if (stripping) return;
+    const targets = root.querySelectorAll(".find-widget [title]");
+    if (targets.length === 0) return;
+    stripping = true;
+    targets.forEach((el) => {
+      el.removeAttribute("title");
+      // aria-label is read by some browsers as a tooltip fallback, leave it
+      // alone for accessibility but copy it into a data attribute so we can
+      // detect re-adds even if the value matches the previous title.
+      const aria = el.getAttribute("aria-label");
+      if (aria) el.setAttribute("data-tooltip", aria);
+    });
+    stripping = false;
   };
+
   strip();
   new MutationObserver(strip).observe(root, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["title"],
   });
 }
