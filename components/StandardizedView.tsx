@@ -1,15 +1,21 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Code2, Eye, Columns2, Download, Loader2, ArrowRight } from "lucide-react";
+import { Code2, Columns2, Download, Loader2, ArrowRight, FileText, Eye, EyeOff } from "lucide-react";
 import { countTokens } from "@/lib/tokens";
 
 const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
-type ViewMode = "code" | "split" | "preview";
+type ViewMode = "code" | "compare" | "deck";
+
+export type PreviewFile = {
+  blob: Blob;
+  type: "pdf" | "pptx";
+  name: string;
+};
 
 export type StandardizedViewHandle = {
   jumpToLine: (line: number) => void;
@@ -42,19 +48,38 @@ export const StandardizedView = forwardRef<
     hasParsed: boolean;
     onDownload?: () => void;
     onChange?: (value: string | undefined) => void;
+    previewFile?: PreviewFile | null;
   }
 >(function StandardizedView(
-  { standardized, parsing, parseStatus, hasParsed, onDownload, onChange },
+  { standardized, parsing, parseStatus, hasParsed, onDownload, onChange, previewFile },
   ref
 ) {
   const [mode, setMode] = useState<ViewMode>("code");
+  const [renderPreview, setRenderPreview] = useState(false);
   const tokenCount = useMemo(() => countTokens(standardized), [standardized]);
   const editorRef = useRef<EditorInstance | null>(null);
   const decoRef = useRef<string[]>([]);
 
+  // Object URL for the deck preview. Recreated when previewFile changes;
+  // revoked on unmount or replacement to avoid leaks.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!previewFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(previewFile.blob);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [previewFile]);
+
   useImperativeHandle(ref, () => ({
     jumpToLine(line: number) {
-      setMode((m) => (m === "preview" ? "split" : m));
+      // Make sure the editor is visible before jumping. If we're on the deck
+      // tab or rendered-preview is on, switch back so the user can see the
+      // jump destination.
+      setMode((m) => (m === "deck" ? "compare" : m));
+      setRenderPreview(false);
       const tryJump = (attempt = 0) => {
         const ed = editorRef.current;
         if (!ed) {
@@ -85,10 +110,11 @@ export const StandardizedView = forwardRef<
     },
   }));
 
-  const showCode = mode === "code" || mode === "split";
-  const showPreview = mode === "preview" || mode === "split";
-  const codeWidth = mode === "code" ? "100%" : mode === "split" ? "50%" : "0%";
-  const previewWidth = mode === "preview" ? "100%" : mode === "split" ? "50%" : "0%";
+  const hasDeck = !!previewFile;
+  const showCodePane = mode === "code" || mode === "compare";
+  const showDeckPane = mode === "compare" || mode === "deck";
+  const codeWidth = mode === "code" ? "100%" : mode === "compare" ? "50%" : "0%";
+  const deckWidth = mode === "deck" ? "100%" : mode === "compare" ? "50%" : "0%";
 
   return (
     <div className="bg-bg rounded-lg border border-border flex flex-col min-h-0 overflow-hidden flex-1">
@@ -105,16 +131,20 @@ export const StandardizedView = forwardRef<
             label="Code"
           />
           <ToggleButton
-            active={mode === "split"}
-            onClick={() => setMode("split")}
+            active={mode === "compare"}
+            onClick={() => setMode("compare")}
             icon={<Columns2 className="w-3 h-3" />}
-            label="Split"
+            label="Compare"
+            disabled={!hasDeck}
+            disabledTitle="Upload a PDF / PPTX deck first to compare"
           />
           <ToggleButton
-            active={mode === "preview"}
-            onClick={() => setMode("preview")}
-            icon={<Eye className="w-3 h-3" />}
-            label="Preview"
+            active={mode === "deck"}
+            onClick={() => setMode("deck")}
+            icon={<FileText className="w-3 h-3" />}
+            label="Lihat Deck"
+            disabled={!hasDeck}
+            disabledTitle="Upload a PDF / PPTX deck first"
           />
         </div>
 
@@ -122,6 +152,24 @@ export const StandardizedView = forwardRef<
           <span className="text-[10px] text-muted font-mono">
             {standardized.length.toLocaleString()} chars · {tokenCount.toLocaleString()} tokens
           </span>
+          {standardized && mode !== "deck" && (
+            <button
+              onClick={() => setRenderPreview((v) => !v)}
+              className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 rounded-md border transition ${
+                renderPreview
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-bg text-textSecondary hover:bg-surface hover:text-text"
+              }`}
+              title={renderPreview ? "Switch to editable code" : "Switch to rendered preview"}
+            >
+              {renderPreview ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+              {renderPreview ? "Edit" : "Render"}
+            </button>
+          )}
           {standardized && onDownload && (
             <button
               onClick={onDownload}
@@ -140,10 +188,10 @@ export const StandardizedView = forwardRef<
           className="min-h-0 overflow-hidden transition-all duration-300 ease-in-out"
           style={{
             width: codeWidth,
-            opacity: showCode ? 1 : 0,
-            borderRight: mode === "split" ? "1px solid #e4e4e7" : "none",
+            opacity: showCodePane ? 1 : 0,
+            borderRight: mode === "compare" ? "1px solid #e4e4e7" : "none",
           }}
-          aria-hidden={!showCode}
+          aria-hidden={!showCodePane}
         >
           <CodePane
             standardized={standardized}
@@ -151,6 +199,7 @@ export const StandardizedView = forwardRef<
             parseStatus={parseStatus}
             hasParsed={hasParsed}
             onChange={onChange}
+            renderPreview={renderPreview}
             onMount={(editor) => {
               editorRef.current = editor;
             }}
@@ -160,20 +209,12 @@ export const StandardizedView = forwardRef<
         <div
           className="min-h-0 overflow-hidden transition-all duration-300 ease-in-out bg-bg"
           style={{
-            width: previewWidth,
-            opacity: showPreview ? 1 : 0,
+            width: deckWidth,
+            opacity: showDeckPane ? 1 : 0,
           }}
-          aria-hidden={!showPreview}
+          aria-hidden={!showDeckPane}
         >
-          <div className="h-full overflow-y-auto scrollbar-slim px-6 py-5">
-            {standardized ? (
-              <MarkdownPreview source={standardized} />
-            ) : (
-              <div className="text-sm text-muted">
-                The rendered markdown preview will appear here once the document is standardized.
-              </div>
-            )}
-          </div>
+          <DeckPane previewFile={previewFile ?? null} previewUrl={previewUrl} />
         </div>
       </div>
     </div>
@@ -186,6 +227,7 @@ function CodePane({
   parseStatus,
   hasParsed,
   onChange,
+  renderPreview,
   onMount,
 }: {
   standardized: string;
@@ -193,6 +235,7 @@ function CodePane({
   parseStatus: string;
   hasParsed: boolean;
   onChange?: (value: string | undefined) => void;
+  renderPreview: boolean;
   onMount?: (editor: EditorInstance) => void;
 }) {
   if (parsing) {
@@ -208,6 +251,13 @@ function CodePane({
   }
 
   if (standardized) {
+    if (renderPreview) {
+      return (
+        <div className="h-full overflow-y-auto scrollbar-slim px-6 py-5">
+          <MarkdownPreview source={standardized} />
+        </div>
+      );
+    }
     return (
       <Editor
         height="100%"
@@ -255,22 +305,78 @@ function CodePane({
   );
 }
 
+function DeckPane({
+  previewFile,
+  previewUrl,
+}: {
+  previewFile: PreviewFile | null;
+  previewUrl: string | null;
+}) {
+  if (!previewFile || !previewUrl) {
+    return (
+      <div className="h-full flex items-center justify-center px-6 text-center">
+        <div className="max-w-sm text-xs text-muted">
+          Upload a deck on the right panel to preview it here.
+        </div>
+      </div>
+    );
+  }
+
+  if (previewFile.type === "pptx") {
+    return (
+      <div className="h-full flex flex-col items-center justify-center px-6 gap-3 text-center">
+        <FileText className="w-9 h-9 text-muted" />
+        <div className="text-sm font-medium text-text">
+          PPTX preview not available in browser
+        </div>
+        <div className="text-xs text-muted leading-relaxed max-w-xs">
+          Browsers can&rsquo;t render .pptx natively. Save the deck as PDF in PowerPoint, or download it below to open in your viewer.
+        </div>
+        <a
+          href={previewUrl}
+          download={previewFile.name}
+          className="text-[11px] font-medium px-3 py-1.5 inline-flex items-center gap-1.5 rounded-md border border-border bg-bg text-textSecondary hover:bg-surface hover:text-text transition"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Download {previewFile.name}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={previewUrl}
+      title={previewFile.name}
+      className="w-full h-full border-0"
+    />
+  );
+}
+
 function ToggleButton({
   active,
   onClick,
   icon,
   label,
+  disabled,
+  disabledTitle,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  disabled?: boolean;
+  disabledTitle?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={disabled ? disabledTitle : undefined}
       className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 transition ${
-        active
+        disabled
+          ? "bg-bg text-muted/60 cursor-not-allowed"
+          : active
           ? "bg-accent text-white"
           : "bg-bg text-textSecondary hover:bg-surface"
       }`}

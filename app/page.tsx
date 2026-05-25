@@ -117,6 +117,11 @@ export default function StudioPage() {
   const [retrieval, setRetrieval] = useState<RetrieveResult | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{
+    blob: Blob;
+    type: "pdf" | "pptx";
+    name: string;
+  } | null>(null);
 
   const [busy, setBusy] = useState<Busy>(null);
   const [parseStatus, setParseStatus] = useState<string>("");
@@ -157,6 +162,7 @@ export default function StudioPage() {
         setValidation(null);
         setRetrieval(null);
         setSuggestedQuestions([]);
+        setPreviewFile(null);
 
         let file = incoming;
         const lname = incoming.name.toLowerCase();
@@ -201,6 +207,12 @@ export default function StudioPage() {
           }
         } else if (compressEnabled && isLegacyPpt) {
           toast.info("Legacy .ppt not supported. Save as .pptx in PowerPoint to enable compression.");
+        }
+
+        if (isPdf) {
+          setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
+        } else if (isPptx || isLegacyPpt) {
+          setPreviewFile({ blob: file, type: "pptx", name: incoming.name });
         }
 
         setParseStatus("Uploading…");
@@ -420,6 +432,7 @@ export default function StudioPage() {
           hasParsed={!!parseResultState}
           onDownload={downloadMd}
           onChange={editable ? onMarkdownEdit : undefined}
+          previewFile={previewFile}
         />
       </section>
 
