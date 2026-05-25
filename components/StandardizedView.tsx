@@ -238,12 +238,36 @@ function CodePane({
   onMount?: (editor: EditorInstance) => void;
 }) {
   if (parsing) {
+    // Try to extract "X/Y" from the status (compression phase emits it).
+    // Other phases (uploading, polling) show an indeterminate bar.
+    const match = parseStatus.match(/\((\d+)\s*\/\s*(\d+)\)/);
+    const percent = match
+      ? Math.min(
+          100,
+          Math.round((parseInt(match[1], 10) / parseInt(match[2], 10)) * 100)
+        )
+      : null;
+
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
         <Loader2 className="w-7 h-7 text-accent animate-spin" />
         <div className="text-sm font-medium text-text">Parsing your file…</div>
-        <div className="text-xs text-muted font-mono">
-          {parseStatus || "Working with LlamaParse"}
+        <div className="w-full max-w-xs flex flex-col gap-1.5">
+          <div className="progress-track">
+            {percent !== null ? (
+              <div className="progress-fill" style={{ width: `${percent}%` }} />
+            ) : (
+              <div className="progress-indeterminate" />
+            )}
+          </div>
+          <div className="flex justify-between items-center text-[11px] font-mono text-muted">
+            <span className="truncate text-left">
+              {parseStatus || "Working with LlamaParse"}
+            </span>
+            {percent !== null && (
+              <span className="text-text font-semibold ml-2">{percent}%</span>
+            )}
+          </div>
         </div>
       </div>
     );

@@ -125,19 +125,24 @@ pre,
   position: relative;
   overflow: hidden;
 }
-.btn-progress::after {
+.btn-progress::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.85) 50%,
-    transparent 100%
-  );
+  height: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.btn-progress::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 35%;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 2px;
   animation: btn-progress-slide 1.4s ease-in-out infinite;
 }
 @keyframes btn-progress-slide {
@@ -145,7 +150,41 @@ pre,
     transform: translateX(-100%);
   }
   100% {
-    transform: translateX(100%);
+    transform: translateX(285%);
+  }
+}
+
+/* Generic horizontal progress bar (used in parsing pane) */
+.progress-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: #e4e4e7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  border-radius: 3px;
+  transition: width 0.25s ease;
+}
+.progress-indeterminate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  border-radius: 3px;
+  animation: progress-indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes progress-indeterminate {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
   }
 }
 

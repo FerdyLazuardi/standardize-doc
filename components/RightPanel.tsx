@@ -57,14 +57,6 @@ export function RightPanel(props: RightPanelProps) {
     props.hasParsed && !props.hasStandardized && !props.busy;
   const showDone = props.hasStandardized && !props.busy;
 
-  const handleStandardizeClick = () => {
-    if (showDone) {
-      setRetryOpen(true);
-      return;
-    }
-    props.onStandardize();
-  };
-
   const confirmRetry = () => {
     setRetryOpen(false);
     props.onStandardize();
@@ -119,33 +111,47 @@ export function RightPanel(props: RightPanelProps) {
               setCompressEnabled={props.setCompressEnabled}
             />
             <FrontmatterForm form={props.form} setForm={props.setForm} />
-            <button
-              className={
-                showDone
-                  ? "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
-                  : `btn-primary w-full ${standardizing ? "btn-progress" : ""} ${ctaHighlighted ? "btn-cta-pulse" : ""}`
-              }
-              disabled={!showDone && ctaDisabled}
-              onClick={handleStandardizeClick}
-              title={
-                showDone
-                  ? "Click to retry — replaces the current markdown"
-                  : undefined
-              }
-            >
-              {showDone ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Done — click to retry
-                  <RotateCw className="w-3.5 h-3.5 opacity-80" />
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  {standardizing ? "Standardizing…" : "Standardize Markdown"}
-                </>
-              )}
-            </button>
+            <div className="flex gap-2">
+              <button
+                className={
+                  showDone
+                    ? "flex-[3] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white shadow-sm cursor-default"
+                    : `btn-primary flex-[3] ${standardizing ? "btn-progress" : ""} ${ctaHighlighted ? "btn-cta-pulse" : ""}`
+                }
+                disabled={showDone || ctaDisabled}
+                onClick={showDone ? undefined : props.onStandardize}
+              >
+                {showDone ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    {standardizing ? "Standardizing…" : "Standardize Markdown"}
+                  </>
+                )}
+              </button>
+
+              <button
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-sm font-medium border transition ${
+                  showDone
+                    ? "border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-400 cursor-not-allowed"
+                }`}
+                disabled={!showDone}
+                onClick={() => setRetryOpen(true)}
+                title={
+                  showDone
+                    ? "Retry standardization (replaces current markdown)"
+                    : "Available after standardization completes"
+                }
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            </div>
           </>
         )}
         {tab === "analysis" && (
