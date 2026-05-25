@@ -21,14 +21,15 @@ export function PptUploader({
     (file: File | null | undefined) => {
       if (!file) return;
       const name = file.name.toLowerCase();
-      if (name.endsWith(".pptx") || name.endsWith(".ppt")) {
+      const isLegacyPpt = name.endsWith(".ppt") && !name.endsWith(".pptx");
+      if (isLegacyPpt) {
         toast.error(
-          "PPTX uploads are not supported. Save the deck as PDF in PowerPoint (File → Save As → PDF) and try again."
+          "Legacy .ppt is not supported. Open the deck in PowerPoint and save it as .pptx or .pdf."
         );
         return;
       }
-      if (!name.endsWith(".pdf")) {
-        toast.error("Only .pdf files are accepted.");
+      if (!name.endsWith(".pdf") && !name.endsWith(".pptx")) {
+        toast.error("Only .pdf and .pptx files are accepted.");
         return;
       }
       setFilename(file.name);
@@ -57,7 +58,7 @@ export function PptUploader({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf"
+        accept=".pdf,.pptx"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
@@ -68,13 +69,13 @@ export function PptUploader({
           <Upload className="w-4 h-4 text-muted" />
         )}
         <span className="truncate">
-          {busy ? "Parsing…" : filename ?? "Drop a .pdf here"}
+          {busy ? "Parsing…" : filename ?? "Drop a .pdf or .pptx here"}
         </span>
       </div>
       <div className="text-xs text-muted mt-1.5">
         {busy
           ? status || "Working with LlamaParse…"
-          : "Or click to browse. PDF only — for PowerPoint decks, save as PDF first."}
+          : "Or click to browse. .pdf or .pptx — deck preview is PDF only."}
       </div>
     </div>
   );

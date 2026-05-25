@@ -169,9 +169,11 @@ export default function StudioPage() {
 
         let file = incoming;
         const lname = incoming.name.toLowerCase();
-        if (!lname.endsWith(".pdf")) {
+        const isPdf = lname.endsWith(".pdf");
+        const isPptx = lname.endsWith(".pptx");
+        if (!isPdf && !isPptx) {
           toast.error(
-            "Only PDF is supported. Save your PowerPoint deck as PDF first (File → Save As → PDF)."
+            "Only .pdf and .pptx are supported. Save legacy .ppt as .pptx or PDF first."
           );
           return;
         }
@@ -179,13 +181,15 @@ export default function StudioPage() {
         if (compressEnabled) {
           setParseStatus("Loading compressor…");
           try {
-            const { compressPdf } = await import("@/lib/compress");
+            const { compressPdf, compressPptx } = await import("@/lib/compress");
             const onProgress = (current: number, total: number, label: string) => {
               setParseStatus(`${label} (${current}/${total})`);
               // Map compression to 0-50% of total parse progress
               setParseProgress(Math.round((current / total) * 50));
             };
-            const result = await compressPdf(incoming, { onProgress });
+            const result = isPdf
+              ? await compressPdf(incoming, { onProgress })
+              : await compressPptx(incoming, { onProgress });
 
             const beforeMb = (result.originalBytes / (1024 * 1024)).toFixed(1);
             const afterMb = (result.compressedBytes / (1024 * 1024)).toFixed(1);
@@ -213,7 +217,12 @@ export default function StudioPage() {
           }
         }
 
-        setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
+        // Deck preview is PDF only — browsers can't render .pptx natively.
+        // For PPTX uploads we simply leave previewFile null so the Compare /
+        // View Deck tabs remain disabled, but parsing/standardize still runs.
+        if (isPdf) {
+          setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
+        }
 
         setParseStatus("Uploading to parser…");
         setParseProgress(55);

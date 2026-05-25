@@ -117,31 +117,35 @@ export function RightPanel(props: RightPanelProps) {
                 className={
                   showDone
                     ? "flex-[3] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white shadow-sm cursor-default"
-                    : `btn-primary flex-[3] relative overflow-hidden ${ctaHighlighted ? "btn-cta-pulse" : ""}`
+                    : standardizing
+                    ? "flex-[3] relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold bg-zinc-200 text-zinc-900 cursor-wait"
+                    : `btn-primary flex-[3] ${ctaHighlighted ? "btn-cta-pulse" : ""}`
                 }
                 disabled={showDone || ctaDisabled}
                 onClick={showDone ? undefined : props.onStandardize}
               >
                 {standardizing && (
                   <span
-                    className="absolute left-0 bottom-0 h-1 bg-white/90 transition-[width] duration-300 ease-out"
+                    className="absolute left-0 top-0 bottom-0 bg-emerald-500/70 transition-[width] duration-300 ease-out"
                     style={{ width: `${props.standardizeProgress ?? 0}%` }}
                     aria-hidden
                   />
                 )}
-                {showDone ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Done
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    {standardizing
-                      ? `Standardizing ${props.standardizeProgress ?? 0}%…`
-                      : "Standardize Markdown"}
-                  </>
-                )}
+                <span className="relative inline-flex items-center gap-1.5">
+                  {showDone ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Done
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {standardizing
+                        ? `Standardizing ${props.standardizeProgress ?? 0}%…`
+                        : "Standardize Markdown"}
+                    </>
+                  )}
+                </span>
               </button>
 
               <button
