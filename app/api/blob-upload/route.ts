@@ -11,6 +11,38 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+// GET /api/blob-upload — safe diagnostic. Returns whether the server has
+// BLOB_READ_WRITE_TOKEN configured and what the parsed store id is. Does NOT
+// leak the secret part. Visit https://<your-domain>/api/blob-upload in a
+// browser to verify the deploy is reading the token correctly.
+export async function GET() {
+  const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
+  if (!token) {
+    return NextResponse.json(
+      {
+        configured: false,
+        message:
+          "BLOB_READ_WRITE_TOKEN missing on the server. Connect the Blob store in Vercel → Storage → Settings → Connected Projects, then redeploy.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const parts = token.split("_");
+  const looksValid =
+    parts.length >= 5 && parts[0] === "vercel" && parts[1] === "blob";
+
+  return NextResponse.json({
+    configured: true,
+    looksValid,
+    prefix: token.slice(0, 18) + "…",
+    storeIdGuess: parts[3] ?? null,
+    note: looksValid
+      ? "Token format looks valid. If uploads still 400, the token's store id may not match the store the SDK is calling."
+      : "Token format looks wrong — should be vercel_blob_rw_<storeId>_<secret>.",
+  });
+}
+
 export async function POST(request: Request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json(
