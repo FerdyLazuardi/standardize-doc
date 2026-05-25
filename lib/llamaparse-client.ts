@@ -1,40 +1,45 @@
-// Browser-side LlamaParse uploader. Uploads the file directly to LlamaIndex
-// Cloud, bypassing Vercel's 4.5 MB function body cap. The API key is exposed
-// to the client via NEXT_PUBLIC_LLAMA_CLOUD_API_KEY — acceptable for internal
-// tools since the key is scoped to LlamaParse credits and easy to rotate.
+// Browser-side LlamaParse uploader.
+//
+// Two-step flow that works with Vercel Hobby's 4.5 MB function body cap:
+//   1. Upload the file directly from the browser to Vercel Blob using a
+//      short-lived signed token issued by /api/blob-upload. Files of any size
+//      bypass the function body cap because the upload goes to Blob, not to
+//      our function.
+//   2. Hand the resulting blob URL to /api/parse/start, which fetches the file
+//      from Blob server-side and forwards it to LlamaParse using the
+//      server-only LLAMA_CLOUD_API_KEY. The Blob is deleted after handoff.
+//
+// The LlamaParse API key never reaches the browser. The Blob URL is short-lived
+// and the file is removed within seconds of upload, so storage stays at ~0.
 
-import {
-  DEFAULT_PARSING_INSTRUCTION,
-  LLAMAPARSE_BASE_URL,
-} from "./llamaparse-shared";
+import { upload } from "@vercel/blob/client";
 
 export async function uploadDirectToLlamaParse(
   file: File,
   parsingInstruction?: string
 ): Promise<{ job_id: string }> {
-  const apiKey = process.env.NEXT_PUBLIC_LLAMA_CLOUD_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "NEXT_PUBLIC_LLAMA_CLOUD_API_KEY not configured. Add it to .env.local and restart the dev server."
-    );
-  }
+  // Step 1: upload to Vercel Blob via signed client token.
+  const blob = await upload(file.name, file, {
+    access: "public",
+    handleUploadUrl: "/api/blob-upload",
+    contentType: file.type || undefined,
+  });
 
-  const fd = new FormData();
-  fd.append("file", file, file.name);
-  fd.append("parsing_instruction", parsingInstruction || DEFAULT_PARSING_INSTRUCTION);
-  fd.append("result_type", "markdown");
-
-  const res = await fetch(`${LLAMAPARSE_BASE_URL}/api/v1/parsing/upload`, {
+  // Step 2: tell our function to relay it to LlamaParse.
+  const res = await fetch("/api/parse/start", {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}` },
-    body: fd,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      blob_url: blob.url,
+      filename: file.name,
+      parsing_instruction: parsingInstruction,
+    }),
   });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`LlamaParse upload failed: ${res.status} ${text}`);
+    throw new Error(`Parse start failed: ${res.status} ${text}`);
   }
 
-  const data = (await res.json()) as { id: string };
-  return { job_id: data.id };
+  return (await res.json()) as { job_id: string };
 }
