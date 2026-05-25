@@ -188,23 +188,24 @@ pre,
   }
 }
 
-/* Monaco find / replace widget — push it well clear of the title bar so the
- * close button has breathing room from the top edge, and tone down the heavy
- * default drop-shadow into something subtle. */
-.monaco-editor .find-widget {
-  top: 36px !important;
-  right: 16px !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid #e4e4e7 !important;
+/* Monaco find / replace widget — the close (X) and "Find Selection" buttons
+ * have multi-word aria-labels that render as multi-line tooltips. The
+ * tooltips overlap the next button on hover, the cursor crosses into the
+ * other button area mid-paint, focus toggles, aria-hidden toggles, and the
+ * whole thing ends up in a flicker loop. We can't fully suppress it without
+ * forking Monaco. Solution: hide both buttons. Users press Escape to close
+ * (same effect as clicking X), and Find Selection is rarely used. The
+ * remaining input + Replace All / Replace controls are flicker-free. */
+.monaco-editor .find-widget .button.codicon-widget-close,
+.monaco-editor .find-widget .codicon-find-selection {
+  display: none !important;
 }
 
-/* Kill every tooltip in the find widget. Native title tooltips (which were
- * causing the flicker on Close + Find Selection) are blanked at the JS
- * layer, but no replacement CSS tooltip is shown either. The icons are
- * universal enough (X close, magnifier, Aa case, regex .*) that users don't
- * need text hints, and zero tooltips means zero possibility of flicker. */
-.monaco-editor .find-widget [data-tooltip]::after,
-.monaco-editor .find-widget [aria-label]::after {
+/* Hide any pseudo-element tooltips that may render anywhere else in the
+ * widget so we don't accidentally re-introduce the flicker pattern on the
+ * remaining buttons. */
+.monaco-editor .find-widget [data-tooltip]:hover::after,
+.monaco-editor .find-widget [aria-label]:hover::after {
   display: none !important;
   content: none !important;
 }
