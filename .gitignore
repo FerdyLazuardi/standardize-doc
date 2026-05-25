@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Claude Code session / agent state
+.claude/
+
+# LLM standardization cache (legacy)
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage / test output
+coverage/
+.nyc_output/
+
+# Vercel
+.vercel/
+
+# Python (legacy backend remnants)
+__pycache__/
+*.py[oc]
+.venv/
+*.egg-info/
+backend/
