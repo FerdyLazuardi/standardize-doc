@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Code2, Columns2, Download, Loader2, FileText, Eye, EyeOff, Sparkles } from "lucide-react";
+import { Code2, Columns2, Download, Loader2, FileText, Eye, EyeOff, Sparkles, Replace } from "lucide-react";
 import { countTokens } from "@/lib/tokens";
 
 const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
@@ -25,6 +25,7 @@ type EditorInstance = {
   revealLineInCenter: (line: number) => void;
   setPosition: (pos: { lineNumber: number; column: number }) => void;
   focus: () => void;
+  getAction: (id: string) => { run: () => void } | null;
   deltaDecorations: (
     old: string[],
     next: {
@@ -154,6 +155,21 @@ export const StandardizedView = forwardRef<
           <span className="text-[10px] text-muted font-mono">
             {standardized.length.toLocaleString()} chars · {tokenCount.toLocaleString()} tokens
           </span>
+          {standardized && mode !== "deck" && !renderPreview && (
+            <button
+              onClick={() => {
+                const ed = editorRef.current;
+                if (!ed) return;
+                ed.focus();
+                ed.getAction("editor.action.startFindReplaceAction")?.run();
+              }}
+              className="text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 rounded-md border border-border bg-bg text-textSecondary hover:bg-surface hover:text-text transition"
+              title="Find & Replace (Ctrl+H). Leave Replace empty to delete matches."
+            >
+              <Replace className="w-3.5 h-3.5" />
+              Find & Replace
+            </button>
+          )}
           {standardized && mode !== "deck" && (
             <button
               onClick={() => setRenderPreview((v) => !v)}

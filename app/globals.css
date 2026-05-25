@@ -188,6 +188,17 @@ pre,
   }
 }
 
+/* Monaco find / replace widget — Monaco renders it in <body> when
+ * fixedOverflowWidgets is true. Bump z-index above sonner toaster
+ * (which sits at 9999) so the close button isn't blocked by the toaster's
+ * pointer-events container. */
+.monaco-editor-overflow-widgets-root {
+  z-index: 10000 !important;
+}
+.monaco-editor-overflow-widgets-root .find-widget {
+  z-index: 10000 !important;
+}
+
 /* Markdown preview */
 .md-preview {
   font-size: 13px;
