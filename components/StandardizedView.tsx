@@ -466,46 +466,50 @@ function stripFindWidgetTitles(editor: unknown) {
   const root = ed.getDomNode?.();
   if (!root) return;
 
+  // Force every Monaco hover/tooltip-ish element to render on a single line.
+  // Two-line tooltips overlap the button below, the cursor crosses into the
+  // overlap, hover toggles, and the result is a flicker loop. Monaco renders
+  // its hover hints both inside the editor and to <body> via a portal, so we
+  // walk both root nodes.
+  const forceNowrap = (node: HTMLElement) => {
+    node.style.setProperty("white-space", "nowrap", "important");
+    node.style.setProperty("max-width", "none", "important");
+    node.style.setProperty("word-break", "keep-all", "important");
+  };
+
   let stripping = false;
   const sanitize = () => {
     if (stripping) return;
     stripping = true;
 
-    // 1. Push the widget itself well below the top edge using inline style
-    //    with !important. CSS rules with !important were losing the
-    //    specificity war against Monaco's own stylesheet, so we have to
-    //    write directly on the element.
+    // 1. Position
     const widget = root.querySelector<HTMLElement>(".find-widget");
     if (widget && widget.style.getPropertyValue("top") !== "40px") {
       widget.style.setProperty("top", "40px", "important");
       widget.style.setProperty("right", "16px", "important");
     }
 
-    // 2. Blank every title attribute under the widget so the browser never
-    //    renders its native tooltip (which is what wraps to two lines and
-    //    overlaps the next button on hover, causing the flicker).
+    // 2. Blank native title attributes everywhere under widget.
     root.querySelectorAll<HTMLElement>(".find-widget [title]").forEach((el) => {
       if (el.getAttribute("title") !== "") el.setAttribute("title", "");
     });
 
-    // 3. Hide Monaco's own hover-hint elements if any render. Use inline
-    //    !important display:none so they can't be re-shown by JS that
-    //    toggles class-based visibility.
+    // 3. Force nowrap on every Monaco hover-hint node, both inside the
+    //    editor and rendered to <body> as a portal.
+    const selectors =
+      ".monaco-hover, [class*='monaco-hover'], [role='tooltip'], [class*='hover-content'], [class*='hover-row']";
+    document.querySelectorAll<HTMLElement>(selectors).forEach(forceNowrap);
     root
       .querySelectorAll<HTMLElement>(
-        ".find-widget .monaco-hover, .find-widget [class*='tooltip']"
+        ".find-widget [class*='tooltip'], .find-widget [class*='hover']"
       )
-      .forEach((el) => {
-        el.style.setProperty("display", "none", "important");
-      });
+      .forEach(forceNowrap);
 
     stripping = false;
   };
 
-  // Eager sanitize on capture-phase mouseover — runs BEFORE the browser
-  // commits to rendering a native tooltip on first hover. This is what
-  // actually kills the flicker; the MutationObserver below is the backstop
-  // for state changes (toggle replace, focus, etc).
+  // Capture-phase mouseover so we sanitize BEFORE the browser commits the
+  // first tooltip paint.
   root.addEventListener(
     "mouseover",
     (e) => {
@@ -517,6 +521,12 @@ function stripFindWidgetTitles(editor: unknown) {
   );
 
   sanitize();
+  // Watch the entire document — Monaco portals tooltips to <body>, so an
+  // observer scoped to the editor root would miss them.
+  new MutationObserver(sanitize).observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
   new MutationObserver(sanitize).observe(root, {
     childList: true,
     subtree: true,

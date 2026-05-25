@@ -189,21 +189,34 @@ pre,
 }
 
 /* Monaco find / replace widget — the close (X) and "Find Selection" buttons
- * have multi-word aria-labels that render as multi-line tooltips. The
- * tooltips overlap the next button on hover, the cursor crosses into the
- * other button area mid-paint, focus toggles, aria-hidden toggles, and the
- * whole thing ends up in a flicker loop. We can't fully suppress it without
- * forking Monaco. Solution: hide both buttons. Users press Escape to close
- * (same effect as clicking X), and Find Selection is rarely used. The
- * remaining input + Replace All / Replace controls are flicker-free. */
+ * still cause flicker so they stay hidden. Press Escape to close.
+ *
+ * For the remaining buttons (prev/next match, replace, etc) the tooltip text
+ * was wrapping onto two lines and overlapping the button below, producing
+ * the same flicker pattern. Force every tooltip-ish element under the
+ * find-widget OR rendered to <body> via Monaco's portal to render on a
+ * single line. white-space: nowrap + max-width: none catches both Monaco's
+ * own hover hint and any keybinding label widget. */
 .monaco-editor .find-widget .button.codicon-widget-close,
 .monaco-editor .find-widget .codicon-find-selection {
   display: none !important;
 }
 
-/* Hide any pseudo-element tooltips that may render anywhere else in the
- * widget so we don't accidentally re-introduce the flicker pattern on the
- * remaining buttons. */
+.monaco-editor .find-widget [class*="tooltip"],
+.monaco-editor .find-widget [class*="hover"],
+.monaco-editor .find-widget [role="tooltip"],
+.monaco-hover,
+.monaco-hover *,
+[class*="monaco"] [class*="tooltip"],
+[class*="monaco"] [class*="hover-content"],
+[class*="monaco"] [class*="hover-row"] {
+  white-space: nowrap !important;
+  max-width: none !important;
+  word-break: keep-all !important;
+}
+
+/* Belt-and-braces: kill any pseudo-element tooltips we might have
+ * accidentally introduced. */
 .monaco-editor .find-widget [data-tooltip]:hover::after,
 .monaco-editor .find-widget [aria-label]:hover::after {
   display: none !important;
