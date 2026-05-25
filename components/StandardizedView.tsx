@@ -467,27 +467,52 @@ function stripFindWidgetTitles(editor: unknown) {
   if (!root) return;
 
   let stripping = false;
-  const strip = () => {
+  const blank = () => {
     if (stripping) return;
-    const targets = root.querySelectorAll(".find-widget [title]");
-    if (targets.length === 0) return;
+    // Setting title to "" (instead of removing) is more robust against the
+    // browser-tooltip race: even if Monaco re-adds the attribute the value
+    // is empty, so the browser renders nothing. Mirror aria-label into a
+    // data-tooltip attribute so our CSS pseudo-element tooltip can pick it
+    // up without re-introducing a native tooltip.
+    const targets = root.querySelectorAll<HTMLElement>(".find-widget [title]");
+    let needWork = false;
+    targets.forEach((el) => {
+      if (el.getAttribute("title") !== "") needWork = true;
+      if (!el.getAttribute("data-tooltip")) needWork = true;
+    });
+    if (!needWork) return;
     stripping = true;
     targets.forEach((el) => {
-      el.removeAttribute("title");
-      // aria-label is read by some browsers as a tooltip fallback, leave it
-      // alone for accessibility but copy it into a data attribute so we can
-      // detect re-adds even if the value matches the previous title.
+      if (el.getAttribute("title") !== "") el.setAttribute("title", "");
       const aria = el.getAttribute("aria-label");
-      if (aria) el.setAttribute("data-tooltip", aria);
+      if (aria && el.getAttribute("data-tooltip") !== aria) {
+        el.setAttribute("data-tooltip", aria);
+      }
     });
     stripping = false;
   };
 
-  strip();
-  new MutationObserver(strip).observe(root, {
+  // Eager pre-strip on capture-phase mouseover — runs BEFORE the browser gets
+  // a chance to render the native tooltip on first hover. This is what
+  // actually kills the flicker; the MutationObserver below is the backstop.
+  root.addEventListener(
+    "mouseover",
+    (e) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      const btn = t.closest(".find-widget [title]") as HTMLElement | null;
+      if (btn && btn.getAttribute("title") !== "") {
+        btn.setAttribute("title", "");
+      }
+    },
+    true
+  );
+
+  blank();
+  new MutationObserver(blank).observe(root, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["title"],
+    attributeFilter: ["title", "aria-label"],
   });
 }

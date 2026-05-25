@@ -188,46 +188,25 @@ pre,
   }
 }
 
-/* Monaco find / replace widget — push it off the very top edge so the close
- * button isn't glued to the title bar, and tone down the heavy default
- * drop-shadow into something more in line with the rest of the UI. */
+/* Monaco find / replace widget — push it well clear of the title bar so the
+ * close button has breathing room from the top edge, and tone down the heavy
+ * default drop-shadow into something subtle. */
 .monaco-editor .find-widget {
-  top: 8px !important;
+  top: 36px !important;
+  right: 16px !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
   border: 1px solid #e4e4e7 !important;
 }
 
-/* Native title tooltips are stripped at the JS layer (StandardizedView). They
- * caused a flicker loop because the tooltip itself overlaps the next button
- * and steals hover. We replace them with a CSS-only tooltip that only
- * appears after the cursor has actually rested for 2 seconds — quick hovers
- * stay silent, no chance to flicker. */
-.monaco-editor .find-widget [aria-label] {
-  position: relative;
-}
-.monaco-editor .find-widget [aria-label]:hover::after {
-  content: attr(aria-label);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(24, 24, 27, 0.92);
-  color: #fafafa;
-  font-size: 11px;
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 100;
-  opacity: 0;
-  animation: find-tooltip-delay 0.15s linear 2s forwards;
-}
-@keyframes find-tooltip-delay {
-  to {
-    opacity: 1;
-  }
+/* Kill every tooltip in the find widget. Native title tooltips (which were
+ * causing the flicker on Close + Find Selection) are blanked at the JS
+ * layer, but no replacement CSS tooltip is shown either. The icons are
+ * universal enough (X close, magnifier, Aa case, regex .*) that users don't
+ * need text hints, and zero tooltips means zero possibility of flicker. */
+.monaco-editor .find-widget [data-tooltip]::after,
+.monaco-editor .find-widget [aria-label]::after {
+  display: none !important;
+  content: none !important;
 }
 
 /* Markdown preview */
