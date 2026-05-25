@@ -6,15 +6,14 @@
 // resulting blob URL to /api/parse/start.
 
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { list } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// GET /api/blob-upload — safe diagnostic. Returns whether the server has
-// BLOB_READ_WRITE_TOKEN configured and what the parsed store id is. Does NOT
-// leak the secret part. Visit https://<your-domain>/api/blob-upload in a
-// browser to verify the deploy is reading the token correctly.
+// GET /api/blob-upload — safe diagnostic. Verifies the server can actually
+// reach the Blob store with the configured token. Does not leak the secret.
 export async function GET() {
   const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
   const explicitStoreId = process.env.BLOB_STORE_ID ?? "";
@@ -23,7 +22,7 @@ export async function GET() {
       {
         configured: false,
         message:
-          "BLOB_READ_WRITE_TOKEN missing on the server. Connect the Blob store in Vercel → Storage → Settings → Connected Projects, then redeploy.",
+          "BLOB_READ_WRITE_TOKEN missing. Connect the Blob store in Vercel → Storage → Settings → Connected Projects, then redeploy.",
       },
       { status: 503 }
     );
@@ -34,8 +33,23 @@ export async function GET() {
     parts.length >= 5 && parts[0] === "vercel" && parts[1] === "blob";
   const tokenStoreId = parts[3] ?? null;
 
+  // BLOB_STORE_ID has format `store_<id>`; the token has `<id>` without prefix.
+  const normalizedExplicit = explicitStoreId.replace(/^store_/, "");
   const idsMatch =
-    !explicitStoreId || !tokenStoreId || explicitStoreId === tokenStoreId;
+    !normalizedExplicit || !tokenStoreId || normalizedExplicit === tokenStoreId;
+
+  // Live probe: try a tiny list() call. If the store is dead/unreachable, this
+  // fails with a precise error that's easier to act on than the upload 400.
+  let liveProbe: { ok: boolean; error?: string };
+  try {
+    await list({ limit: 1, token });
+    liveProbe = { ok: true };
+  } catch (e) {
+    liveProbe = {
+      ok: false,
+      error: e instanceof Error ? `${e.name}: ${e.message}` : String(e),
+    };
+  }
 
   return NextResponse.json({
     configured: true,
@@ -44,11 +58,12 @@ export async function GET() {
     tokenStoreId,
     explicitStoreId: explicitStoreId || "(not set)",
     idsMatch,
+    liveProbe,
     note: !looksValid
       ? "Token format wrong — should be vercel_blob_rw_<storeId>_<secret>."
-      : !idsMatch
-        ? "MISMATCH: BLOB_STORE_ID and the store id inside BLOB_READ_WRITE_TOKEN don't match. Disconnect+reconnect the store in Vercel Storage tab to overwrite both consistently, then redeploy."
-        : "Looks healthy. If uploads still 400, the store may have been deleted server-side — recreate it.",
+      : !liveProbe.ok
+        ? "Server cannot reach the Blob store with this token. Most likely the store was deleted/recreated and the env vars point to a dead store. Fix: delete the existing Blob store in Vercel dashboard, create a fresh one, ensure it auto-injects BLOB_READ_WRITE_TOKEN into this project (Production+Preview), then redeploy without cache."
+        : "All checks pass. Uploads should work.",
   });
 }
 
