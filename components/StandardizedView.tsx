@@ -467,52 +467,60 @@ function stripFindWidgetTitles(editor: unknown) {
   if (!root) return;
 
   let stripping = false;
-  const blank = () => {
+  const sanitize = () => {
     if (stripping) return;
-    // Setting title to "" (instead of removing) is more robust against the
-    // browser-tooltip race: even if Monaco re-adds the attribute the value
-    // is empty, so the browser renders nothing. Mirror aria-label into a
-    // data-tooltip attribute so our CSS pseudo-element tooltip can pick it
-    // up without re-introducing a native tooltip.
-    const targets = root.querySelectorAll<HTMLElement>(".find-widget [title]");
-    let needWork = false;
-    targets.forEach((el) => {
-      if (el.getAttribute("title") !== "") needWork = true;
-      if (!el.getAttribute("data-tooltip")) needWork = true;
-    });
-    if (!needWork) return;
     stripping = true;
-    targets.forEach((el) => {
+
+    // 1. Push the widget itself well below the top edge using inline style
+    //    with !important. CSS rules with !important were losing the
+    //    specificity war against Monaco's own stylesheet, so we have to
+    //    write directly on the element.
+    const widget = root.querySelector<HTMLElement>(".find-widget");
+    if (widget && widget.style.getPropertyValue("top") !== "40px") {
+      widget.style.setProperty("top", "40px", "important");
+      widget.style.setProperty("right", "16px", "important");
+    }
+
+    // 2. Blank every title attribute under the widget so the browser never
+    //    renders its native tooltip (which is what wraps to two lines and
+    //    overlaps the next button on hover, causing the flicker).
+    root.querySelectorAll<HTMLElement>(".find-widget [title]").forEach((el) => {
       if (el.getAttribute("title") !== "") el.setAttribute("title", "");
-      const aria = el.getAttribute("aria-label");
-      if (aria && el.getAttribute("data-tooltip") !== aria) {
-        el.setAttribute("data-tooltip", aria);
-      }
     });
+
+    // 3. Hide Monaco's own hover-hint elements if any render. Use inline
+    //    !important display:none so they can't be re-shown by JS that
+    //    toggles class-based visibility.
+    root
+      .querySelectorAll<HTMLElement>(
+        ".find-widget .monaco-hover, .find-widget [class*='tooltip']"
+      )
+      .forEach((el) => {
+        el.style.setProperty("display", "none", "important");
+      });
+
     stripping = false;
   };
 
-  // Eager pre-strip on capture-phase mouseover — runs BEFORE the browser gets
-  // a chance to render the native tooltip on first hover. This is what
-  // actually kills the flicker; the MutationObserver below is the backstop.
+  // Eager sanitize on capture-phase mouseover — runs BEFORE the browser
+  // commits to rendering a native tooltip on first hover. This is what
+  // actually kills the flicker; the MutationObserver below is the backstop
+  // for state changes (toggle replace, focus, etc).
   root.addEventListener(
     "mouseover",
     (e) => {
       const t = e.target as HTMLElement | null;
-      if (!t) return;
-      const btn = t.closest(".find-widget [title]") as HTMLElement | null;
-      if (btn && btn.getAttribute("title") !== "") {
-        btn.setAttribute("title", "");
-      }
+      if (!t || !t.closest(".find-widget")) return;
+      sanitize();
     },
     true
   );
 
-  blank();
-  new MutationObserver(blank).observe(root, {
+  sanitize();
+  new MutationObserver(sanitize).observe(root, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["title", "aria-label"],
+    attributeFilter: ["title", "style", "class"],
   });
 }
