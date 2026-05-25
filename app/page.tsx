@@ -477,6 +477,7 @@ export default function StudioPage() {
           parseStatus={parseStatus}
           parseProgress={parseProgress}
           hasParsed={!!parseResultState}
+          parsedMarkdown={parseResultState?.cleaned_markdown ?? ""}
           onDownload={downloadMd}
           onChange={editable ? onMarkdownEdit : undefined}
           previewFile={previewFile}

@@ -4,7 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Code2, Columns2, Download, Loader2, ArrowRight, FileText, Eye, EyeOff } from "lucide-react";
+import { Code2, Columns2, Download, Loader2, FileText, Eye, EyeOff, Sparkles } from "lucide-react";
 import { countTokens } from "@/lib/tokens";
 
 const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
@@ -47,12 +47,13 @@ export const StandardizedView = forwardRef<
     parseStatus: string;
     parseProgress?: number;
     hasParsed: boolean;
+    parsedMarkdown?: string;
     onDownload?: () => void;
     onChange?: (value: string | undefined) => void;
     previewFile?: PreviewFile | null;
   }
 >(function StandardizedView(
-  { standardized, parsing, parseStatus, parseProgress, hasParsed, onDownload, onChange, previewFile },
+  { standardized, parsing, parseStatus, parseProgress, hasParsed, parsedMarkdown, onDownload, onChange, previewFile },
   ref
 ) {
   const [mode, setMode] = useState<ViewMode>("code");
@@ -199,6 +200,7 @@ export const StandardizedView = forwardRef<
             parseStatus={parseStatus}
             parseProgress={parseProgress ?? 0}
             hasParsed={hasParsed}
+            parsedMarkdown={parsedMarkdown ?? ""}
             onChange={onChange}
             renderPreview={renderPreview}
             onMount={(editor) => {
@@ -228,6 +230,7 @@ function CodePane({
   parseStatus,
   parseProgress,
   hasParsed,
+  parsedMarkdown,
   onChange,
   renderPreview,
   onMount,
@@ -237,6 +240,7 @@ function CodePane({
   parseStatus: string;
   parseProgress: number;
   hasParsed: boolean;
+  parsedMarkdown: string;
   onChange?: (value: string | undefined) => void;
   renderPreview: boolean;
   onMount?: (editor: EditorInstance) => void;
@@ -288,22 +292,49 @@ function CodePane({
           scrollBeyondLastLine: false,
           renderLineHighlight: "none",
           padding: { top: 12, bottom: 12 },
+          // Render the find widget (Ctrl+F) as a fixed overlay on the body
+          // instead of inside the editor's overflow-hidden container, so it
+          // doesn't get clipped or pushed off-screen near the top edge.
+          fixedOverflowWidgets: true,
         }}
       />
     );
   }
 
   if (hasParsed) {
+    // Show the raw LlamaParse markdown so the user can verify what came out
+    // of the parser before they decide to standardize. The editor is locked
+    // — they're meant to review, not edit, this stage.
     return (
-      <div className="h-full flex items-center justify-center px-6">
-        <div className="max-w-md rounded-lg border border-accent/30 bg-accentSoft px-5 py-4">
-          <div className="text-sm font-semibold text-accent flex items-center gap-2">
-            Parse complete
-            <ArrowRight className="w-4 h-4" />
-          </div>
-          <div className="text-xs text-text mt-1.5 leading-relaxed">
-            Click <span className="font-semibold">Standardize Markdown</span> on the right panel to generate the RAG-optimized output.
-          </div>
+      <div className="h-full flex flex-col min-h-0">
+        <div className="px-4 py-2.5 border-b border-amber-300/60 bg-amber-50 flex items-center gap-2 text-[12px] text-amber-900">
+          <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span className="font-medium">Parse complete — preview only.</span>
+          <span className="text-amber-800/80">
+            Click <span className="font-semibold">Standardize Markdown</span> on
+            the right to generate the editable, RAG-optimized version.
+          </span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <Editor
+            height="100%"
+            defaultLanguage="markdown"
+            theme="vs"
+            value={parsedMarkdown}
+            options={{
+              readOnly: true,
+              domReadOnly: true,
+              minimap: { enabled: false },
+              wordWrap: "on",
+              fontSize: 13,
+              fontFamily: "var(--font-mono), ui-monospace, monospace",
+              scrollBeyondLastLine: false,
+              renderLineHighlight: "none",
+              padding: { top: 12, bottom: 12 },
+              fixedOverflowWidgets: true,
+              contextmenu: false,
+            }}
+          />
         </div>
       </div>
     );
