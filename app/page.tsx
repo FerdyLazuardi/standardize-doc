@@ -166,20 +166,21 @@ export default function StudioPage() {
 
         let file = incoming;
         const lname = incoming.name.toLowerCase();
-        const isPdf = lname.endsWith(".pdf");
-        const isPptx = lname.endsWith(".pptx");
-        const isLegacyPpt = lname.endsWith(".ppt") && !lname.endsWith(".pptx");
+        if (!lname.endsWith(".pdf")) {
+          toast.error(
+            "Only PDF is supported. Save your PowerPoint deck as PDF first (File → Save As → PDF)."
+          );
+          return;
+        }
 
-        if (compressEnabled && (isPdf || isPptx)) {
+        if (compressEnabled) {
           setParseStatus("Loading compressor…");
           try {
-            const { compressPdf, compressPptx } = await import("@/lib/compress");
+            const { compressPdf } = await import("@/lib/compress");
             const onProgress = (current: number, total: number, label: string) => {
               setParseStatus(`${label} (${current}/${total})`);
             };
-            const result = isPdf
-              ? await compressPdf(incoming, { onProgress })
-              : await compressPptx(incoming, { onProgress });
+            const result = await compressPdf(incoming, { onProgress });
 
             const beforeMb = (result.originalBytes / (1024 * 1024)).toFixed(1);
             const afterMb = (result.compressedBytes / (1024 * 1024)).toFixed(1);
@@ -205,19 +206,13 @@ export default function StudioPage() {
             const msg = e instanceof Error ? e.message : "Compression failed";
             toast.error(`${msg} — uploading original file.`);
           }
-        } else if (compressEnabled && isLegacyPpt) {
-          toast.info("Legacy .ppt not supported. Save as .pptx in PowerPoint to enable compression.");
         }
 
-        if (isPdf) {
-          setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
-        } else if (isPptx || isLegacyPpt) {
-          setPreviewFile({ blob: file, type: "pptx", name: incoming.name });
-        }
+        setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
 
         setParseStatus("Uploading…");
         const { job_id } = await parseStart(file);
-        setParseStatus("Parsing PPT...");
+        setParseStatus("Parsing PDF...");
         toast.info(`LlamaParse job ${job_id} queued. Polling...`);
 
         const result = await parsePollUntilDone(job_id, {
@@ -228,7 +223,7 @@ export default function StudioPage() {
         setParseResultState(result);
         const dropped = result.noise_stats.dropped_slides.length;
         toast.success(
-          `Parsed. Kept ${result.noise_stats.kept_slides}/${result.noise_stats.original_slides} slides${
+          `Parsed. Kept ${result.noise_stats.kept_slides}/${result.noise_stats.original_slides} pages${
             dropped > 0
               ? ` (dropped: ${result.noise_stats.dropped_slides.join(", ")})`
               : ""

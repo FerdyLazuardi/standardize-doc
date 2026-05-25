@@ -142,7 +142,7 @@ export const StandardizedView = forwardRef<
             active={mode === "deck"}
             onClick={() => setMode("deck")}
             icon={<FileText className="w-3 h-3" />}
-            label="Lihat Deck"
+            label="Deck"
             disabled={!hasDeck}
             disabledTitle="Upload a PDF / PPTX deck first"
           />
@@ -155,11 +155,10 @@ export const StandardizedView = forwardRef<
           {standardized && mode !== "deck" && (
             <button
               onClick={() => setRenderPreview((v) => !v)}
-              className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 rounded-md border transition ${
-                renderPreview
+              className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 rounded-md border transition ${renderPreview
                   ? "border-accent bg-accent text-white"
                   : "border-border bg-bg text-textSecondary hover:bg-surface hover:text-text"
-              }`}
+                }`}
               title={renderPreview ? "Switch to editable code" : "Switch to rendered preview"}
             >
               {renderPreview ? (
@@ -373,13 +372,12 @@ function ToggleButton({
       onClick={onClick}
       disabled={disabled}
       title={disabled ? disabledTitle : undefined}
-      className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 transition ${
-        disabled
+      className={`text-[11px] font-medium px-2.5 py-1 inline-flex items-center gap-1 transition ${disabled
           ? "bg-bg text-muted/60 cursor-not-allowed"
           : active
-          ? "bg-accent text-white"
-          : "bg-bg text-textSecondary hover:bg-surface"
-      }`}
+            ? "bg-accent text-white"
+            : "bg-bg text-textSecondary hover:bg-surface"
+        }`}
     >
       {icon}
       {label}

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Upload, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 export function PptUploader({
   onUpload,
@@ -20,7 +21,16 @@ export function PptUploader({
     (file: File | null | undefined) => {
       if (!file) return;
       const name = file.name.toLowerCase();
-      if (!name.endsWith(".pptx") && !name.endsWith(".ppt") && !name.endsWith(".pdf")) return;
+      if (name.endsWith(".pptx") || name.endsWith(".ppt")) {
+        toast.error(
+          "PPTX uploads are not supported. Save the deck as PDF in PowerPoint (File → Save As → PDF) and try again."
+        );
+        return;
+      }
+      if (!name.endsWith(".pdf")) {
+        toast.error("Only .pdf files are accepted.");
+        return;
+      }
       setFilename(file.name);
       onUpload(file);
     },
@@ -47,7 +57,7 @@ export function PptUploader({
       <input
         ref={inputRef}
         type="file"
-        accept=".pptx,.ppt,.pdf"
+        accept=".pdf"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
@@ -58,13 +68,13 @@ export function PptUploader({
           <Upload className="w-4 h-4 text-muted" />
         )}
         <span className="truncate">
-          {busy ? "Parsing…" : filename ?? "Drop .pptx or .pdf here"}
+          {busy ? "Parsing…" : filename ?? "Drop a .pdf here"}
         </span>
       </div>
       <div className="text-xs text-muted mt-1.5">
         {busy
           ? status || "Working with LlamaParse…"
-          : "Or click to browse. .pptx / .ppt / .pdf only."}
+          : "Or click to browse. PDF only — for PowerPoint decks, save as PDF first."}
       </div>
     </div>
   );

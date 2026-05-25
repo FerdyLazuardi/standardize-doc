@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Layers } from "lucide-react";
+import { Sparkles, Layers, Check } from "lucide-react";
 import { ParserOptions } from "./ParserOptions";
 import { PptUploader } from "./PptUploader";
 import { FrontmatterForm, type FormState } from "./FrontmatterForm";
@@ -48,10 +48,27 @@ export type RightPanelProps = {
 
 export function RightPanel(props: RightPanelProps) {
   const [tab, setTab] = useState<Tab>("setup");
+  const [retryOpen, setRetryOpen] = useState(false);
 
+  const standardizing = props.busy === "standardize";
   const ctaDisabled = !!props.busy || !props.hasParsed;
   const retrievalDisabled = !props.hasStandardized;
-  const ctaHighlighted = props.hasParsed && !props.hasStandardized && !props.busy;
+  const ctaHighlighted =
+    props.hasParsed && !props.hasStandardized && !props.busy;
+  const showDone = props.hasStandardized && !props.busy;
+
+  const handleStandardizeClick = () => {
+    if (showDone) {
+      setRetryOpen(true);
+      return;
+    }
+    props.onStandardize();
+  };
+
+  const confirmRetry = () => {
+    setRetryOpen(false);
+    props.onStandardize();
+  };
 
   return (
     <div className="bg-bg rounded-lg border border-border flex flex-col min-h-0 overflow-hidden">
@@ -65,7 +82,7 @@ export function RightPanel(props: RightPanelProps) {
               Standardize Knowledge Studio
             </h1>
             <p className="text-[10px] text-textSecondary leading-tight">
-              PPT / PDF → RAG-optimized Markdown for A-Pedi
+              PDF → RAG-optimized Markdown for A-Pedi
             </p>
           </div>
         </div>
@@ -103,12 +120,26 @@ export function RightPanel(props: RightPanelProps) {
             />
             <FrontmatterForm form={props.form} setForm={props.setForm} />
             <button
-              className={`btn-primary w-full ${ctaHighlighted ? "btn-cta-pulse" : ""}`}
-              disabled={ctaDisabled}
-              onClick={props.onStandardize}
+              className={
+                showDone
+                  ? "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
+                  : `btn-primary w-full ${ctaHighlighted ? "btn-cta-pulse" : ""}`
+              }
+              disabled={!showDone && ctaDisabled}
+              onClick={handleStandardizeClick}
+              title={showDone ? "Click to run standardize again" : undefined}
             >
-              <Sparkles className="w-4 h-4" />
-              {props.busy === "standardize" ? "Standardizing…" : "Standardize Markdown"}
+              {showDone ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Done
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  {standardizing ? "Standardizing…" : "Standardize Markdown"}
+                </>
+              )}
             </button>
           </>
         )}
@@ -135,6 +166,13 @@ export function RightPanel(props: RightPanelProps) {
           />
         )}
       </div>
+
+      {retryOpen && (
+        <RetryModal
+          onCancel={() => setRetryOpen(false)}
+          onConfirm={confirmRetry}
+        />
+      )}
     </div>
   );
 }
@@ -161,3 +199,47 @@ function TabButton({
     </button>
   );
 }
+
+function RetryModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-bg rounded-lg border border-border shadow-lg w-full max-w-sm p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-sm font-semibold text-text">
+          Run standardize again?
+        </h2>
+        <p className="text-xs text-textSecondary mt-2 leading-relaxed">
+          This will replace the current standardized markdown and rerun
+          analysis. Any manual edits in the editor will be lost.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="text-[11px] font-medium px-3 py-1.5 rounded-md border border-border bg-bg text-textSecondary hover:bg-surface hover:text-text transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="text-[11px] font-medium px-3 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition inline-flex items-center gap-1"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Retry standardize
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
