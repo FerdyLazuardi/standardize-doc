@@ -120,6 +120,35 @@ pre,
   }
 }
 
+/* Indeterminate progress bar inside the Standardize button while it streams */
+.btn-progress {
+  position: relative;
+  overflow: hidden;
+}
+.btn-progress::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 100%
+  );
+  animation: btn-progress-slide 1.4s ease-in-out infinite;
+}
+@keyframes btn-progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Markdown preview */
 .md-preview {
   font-size: 13px;

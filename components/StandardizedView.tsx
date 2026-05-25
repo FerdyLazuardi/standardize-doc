@@ -345,7 +345,7 @@ function DeckPane({
 
   return (
     <iframe
-      src={previewUrl}
+      src={`${previewUrl}#zoom=50`}
       title={previewFile.name}
       className="w-full h-full border-0"
     />

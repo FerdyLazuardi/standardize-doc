@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Layers, Check } from "lucide-react";
+import { Sparkles, Layers, Check, RotateCw } from "lucide-react";
 import { ParserOptions } from "./ParserOptions";
 import { PptUploader } from "./PptUploader";
 import { FrontmatterForm, type FormState } from "./FrontmatterForm";
@@ -123,16 +123,21 @@ export function RightPanel(props: RightPanelProps) {
               className={
                 showDone
                   ? "w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition shadow-sm"
-                  : `btn-primary w-full ${ctaHighlighted ? "btn-cta-pulse" : ""}`
+                  : `btn-primary w-full ${standardizing ? "btn-progress" : ""} ${ctaHighlighted ? "btn-cta-pulse" : ""}`
               }
               disabled={!showDone && ctaDisabled}
               onClick={handleStandardizeClick}
-              title={showDone ? "Click to run standardize again" : undefined}
+              title={
+                showDone
+                  ? "Click to retry — replaces the current markdown"
+                  : undefined
+              }
             >
               {showDone ? (
                 <>
                   <Check className="w-4 h-4" />
-                  Done
+                  Done — click to retry
+                  <RotateCw className="w-3.5 h-3.5 opacity-80" />
                 </>
               ) : (
                 <>
