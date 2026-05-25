@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
-    "@vercel/blob": "^2.4.0",
     "js-tiktoken": "^1.0.15",
     "jszip": "^3.10.1",
     "lucide-react": "^0.460.0",

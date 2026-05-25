@@ -1,64 +1,26 @@
 // Browser-side LlamaParse uploader.
 //
-// Two-step flow that works with Vercel Hobby's 4.5 MB function body cap:
-//   1. Upload the file directly from the browser to Vercel Blob using a
-//      short-lived signed token issued by /api/blob-upload. Files of any size
-//      bypass the function body cap because the upload goes to Blob, not to
-//      our function.
-//   2. Hand the resulting blob URL to /api/parse/start, which fetches the file
-//      from Blob server-side and forwards it to LlamaParse using the
-//      server-only LLAMA_CLOUD_API_KEY. The Blob is deleted after handoff.
+// Posts the file directly to /api/parse/start as multipart/form-data. The route
+// forwards to LlamaParse using the server-only LLAMA_CLOUD_API_KEY. The browser
+// never sees the key.
 //
-// The LlamaParse API key never reaches the browser. The Blob URL is short-lived
-// and the file is removed within seconds of upload, so storage stays at ~0.
-
-import { upload } from "@vercel/blob/client";
+// File size is bounded by Vercel's function body cap (~4.5 MB on Hobby).
+// lib/compress.ts shrinks PDFs/PPTX below that before this is called.
 
 export async function uploadDirectToLlamaParse(
   file: File,
   parsingInstruction?: string
 ): Promise<{ job_id: string }> {
-  // Step 1: upload to Vercel Blob via signed client token.
-  let blob: Awaited<ReturnType<typeof upload>>;
-  try {
-    blob = await upload(file.name, file, {
-      access: "public",
-      handleUploadUrl: "/api/blob-upload",
-      contentType: file.type || undefined,
-    });
-  } catch (e: unknown) {
-    const raw = e instanceof Error ? e.message : "Upload failed";
-    // Probe /api/blob-upload directly so we can surface the server error text
-    // (e.g. "BLOB_READ_WRITE_TOKEN not configured") to the user instead of the
-    // generic "Failed to retrieve the client token" message.
-    try {
-      const probe = await fetch("/api/blob-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "blob.generate-client-token",
-          payload: { pathname: file.name, callbackUrl: "" },
-        }),
-      });
-      if (!probe.ok) {
-        const text = await probe.text().catch(() => "");
-        throw new Error(`${raw} — server says: ${text || probe.statusText}`);
-      }
-    } catch (probeErr) {
-      if (probeErr instanceof Error && probeErr.message !== raw) throw probeErr;
-    }
-    throw new Error(raw);
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  fd.append("filename", file.name);
+  if (parsingInstruction) {
+    fd.append("parsing_instruction", parsingInstruction);
   }
 
-  // Step 2: tell our function to relay it to LlamaParse.
   const res = await fetch("/api/parse/start", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      blob_url: blob.url,
-      filename: file.name,
-      parsing_instruction: parsingInstruction,
-    }),
+    body: fd,
   });
 
   if (!res.ok) {
