@@ -12,6 +12,16 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      {
+        error:
+          "BLOB_READ_WRITE_TOKEN not configured. Enable Vercel Blob: Vercel dashboard → Project → Storage → Create → Blob → then redeploy.",
+      },
+      { status: 503 }
+    );
+  }
+
   const body = (await request.json()) as HandleUploadBody;
 
   try {
@@ -48,6 +58,9 @@ export async function POST(request: Request) {
     return NextResponse.json(jsonResponse);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Upload token failure";
+    // Surface the underlying Vercel Blob error verbatim so the browser console
+    // shows what actually went wrong (token missing, scope issue, etc).
+    console.error("[/api/blob-upload] error:", e);
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

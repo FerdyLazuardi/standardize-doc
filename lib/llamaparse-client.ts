@@ -19,11 +19,36 @@ export async function uploadDirectToLlamaParse(
   parsingInstruction?: string
 ): Promise<{ job_id: string }> {
   // Step 1: upload to Vercel Blob via signed client token.
-  const blob = await upload(file.name, file, {
-    access: "public",
-    handleUploadUrl: "/api/blob-upload",
-    contentType: file.type || undefined,
-  });
+  let blob: Awaited<ReturnType<typeof upload>>;
+  try {
+    blob = await upload(file.name, file, {
+      access: "public",
+      handleUploadUrl: "/api/blob-upload",
+      contentType: file.type || undefined,
+    });
+  } catch (e: unknown) {
+    const raw = e instanceof Error ? e.message : "Upload failed";
+    // Probe /api/blob-upload directly so we can surface the server error text
+    // (e.g. "BLOB_READ_WRITE_TOKEN not configured") to the user instead of the
+    // generic "Failed to retrieve the client token" message.
+    try {
+      const probe = await fetch("/api/blob-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "blob.generate-client-token",
+          payload: { pathname: file.name, callbackUrl: "" },
+        }),
+      });
+      if (!probe.ok) {
+        const text = await probe.text().catch(() => "");
+        throw new Error(`${raw} — server says: ${text || probe.statusText}`);
+      }
+    } catch (probeErr) {
+      if (probeErr instanceof Error && probeErr.message !== raw) throw probeErr;
+    }
+    throw new Error(raw);
+  }
 
   // Step 2: tell our function to relay it to LlamaParse.
   const res = await fetch("/api/parse/start", {
