@@ -485,9 +485,9 @@ function stripFindWidgetTitles(editor: unknown) {
 
     // 1. Position
     const widget = root.querySelector<HTMLElement>(".find-widget");
-    if (widget && widget.style.getPropertyValue("right") !== "32px") {
+    if (widget && widget.style.getPropertyValue("right") !== "64px") {
       widget.style.setProperty("top", "40px", "important");
-      widget.style.setProperty("right", "32px", "important");
+      widget.style.setProperty("right", "64px", "important");
     }
 
     // 2. Blank native title attributes everywhere under widget.
