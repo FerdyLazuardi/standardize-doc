@@ -466,15 +466,16 @@ function stripFindWidgetTitles(editor: unknown) {
   const root = ed.getDomNode?.();
   if (!root) return;
 
-  // Force every Monaco hover/tooltip-ish element to render on a single line.
-  // Two-line tooltips overlap the button below, the cursor crosses into the
-  // overlap, hover toggles, and the result is a flicker loop. Monaco renders
-  // its hover hints both inside the editor and to <body> via a portal, so we
-  // walk both root nodes.
+  // Force every Monaco hover/tooltip-ish element to render on a single line
+  // AND sit above everything else. Two-line tooltips overlap the button
+  // below and cause a hover-flicker loop; low-z-index tooltips can render
+  // behind the find widget chrome. Monaco renders these nodes both inside
+  // the editor and to <body> via a portal, so we walk both root nodes.
   const forceNowrap = (node: HTMLElement) => {
     node.style.setProperty("white-space", "nowrap", "important");
     node.style.setProperty("max-width", "none", "important");
     node.style.setProperty("word-break", "keep-all", "important");
+    node.style.setProperty("z-index", "100000", "important");
   };
 
   let stripping = false;

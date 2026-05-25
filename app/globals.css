@@ -188,20 +188,12 @@ pre,
   }
 }
 
-/* Monaco find / replace widget — the close (X) and "Find Selection" buttons
- * still cause flicker so they stay hidden. Press Escape to close.
- *
- * For the remaining buttons (prev/next match, replace, etc) the tooltip text
- * was wrapping onto two lines and overlapping the button below, producing
- * the same flicker pattern. Force every tooltip-ish element under the
- * find-widget OR rendered to <body> via Monaco's portal to render on a
- * single line. white-space: nowrap + max-width: none catches both Monaco's
- * own hover hint and any keybinding label widget. */
-.monaco-editor .find-widget .button.codicon-widget-close,
-.monaco-editor .find-widget .codicon-find-selection {
-  display: none !important;
-}
-
+/* Monaco find / replace widget — tooltips were wrapping onto two lines and
+ * overlapping the button below them, producing a hover flicker loop. Force
+ * every Monaco hover/tooltip element to render on a single line so it can't
+ * cover a sibling button. Also push tooltips to a very high z-index so they
+ * sit above the find-widget chrome (which itself uses a high stacking
+ * context) and are never clipped behind it. */
 .monaco-editor .find-widget [class*="tooltip"],
 .monaco-editor .find-widget [class*="hover"],
 .monaco-editor .find-widget [role="tooltip"],
@@ -213,6 +205,11 @@ pre,
   white-space: nowrap !important;
   max-width: none !important;
   word-break: keep-all !important;
+}
+.monaco-hover,
+[role="tooltip"],
+[class*="monaco"] [class*="tooltip"] {
+  z-index: 100000 !important;
 }
 
 /* Belt-and-braces: kill any pseudo-element tooltips we might have
