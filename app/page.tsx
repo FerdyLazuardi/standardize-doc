@@ -125,6 +125,8 @@ export default function StudioPage() {
 
   const [busy, setBusy] = useState<Busy>(null);
   const [parseStatus, setParseStatus] = useState<string>("");
+  const [parseProgress, setParseProgress] = useState<number>(0);
+  const [standardizeProgress, setStandardizeProgress] = useState<number>(0);
 
   // Refs for the edit debounce + loop-prevention against programmatic Monaco updates
   const standardizedRef = useRef(standardized);
@@ -155,6 +157,7 @@ export default function StudioPage() {
     async (incoming: File) => {
       setBusy("parsing");
       setParseStatus("Uploading...");
+      setParseProgress(0);
       try {
         setParseResultState(null);
         setStandardized("");
@@ -179,6 +182,8 @@ export default function StudioPage() {
             const { compressPdf } = await import("@/lib/compress");
             const onProgress = (current: number, total: number, label: string) => {
               setParseStatus(`${label} (${current}/${total})`);
+              // Map compression to 0-50% of total parse progress
+              setParseProgress(Math.round((current / total) * 50));
             };
             const result = await compressPdf(incoming, { onProgress });
 
@@ -210,16 +215,30 @@ export default function StudioPage() {
 
         setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
 
-        setParseStatus("Uploading…");
+        setParseStatus("Uploading to parser…");
+        setParseProgress(55);
         const { job_id } = await parseStart(file);
-        setParseStatus("Parsing PDF...");
+        setParseStatus("Parsing PDF…");
+        setParseProgress(60);
         toast.info(`LlamaParse job ${job_id} queued. Polling...`);
 
+        // Time-based monotonic curve from 60 → 95 while polling.
+        // 60 + 35 * elapsed / (elapsed + 15s) — starts fast, slows toward 95.
+        const pollStart = Date.now();
         const result = await parsePollUntilDone(job_id, {
           intervalMs: 2000,
           timeoutMs: 180000,
-          onTick: (s) => setParseStatus(`Status: ${s}`),
+          onTick: (s) => {
+            const elapsed = Date.now() - pollStart;
+            const pct = Math.min(
+              95,
+              Math.round(60 + 35 * (elapsed / (elapsed + 15000)))
+            );
+            setParseProgress((prev) => Math.max(prev, pct));
+            setParseStatus(`Status: ${s}`);
+          },
         });
+        setParseProgress(100);
         setParseResultState(result);
         const dropped = result.noise_stats.dropped_slides.length;
         toast.success(
@@ -235,6 +254,7 @@ export default function StudioPage() {
       } finally {
         setBusy(null);
         setParseStatus("");
+        setParseProgress(0);
       }
     },
     [compressEnabled]
@@ -278,6 +298,14 @@ export default function StudioPage() {
     setValidation(null);
     setRetrieval(null);
     setSuggestedQuestions([]);
+    setStandardizeProgress(0);
+    // Standardized output is typically 0.6-1.0× the input length. Use input
+    // length as the target so the bar fills monotonically as text streams in,
+    // capped at 95% until the stream actually finishes.
+    const targetChars = Math.max(
+      1000,
+      parseResultState.cleaned_markdown.length
+    );
     try {
       const full = await standardizeStream(
         {
@@ -291,9 +319,15 @@ export default function StudioPage() {
         },
         (_delta, accumulated) => {
           setStandardized(accumulated);
+          const pct = Math.min(
+            95,
+            Math.round((accumulated.length / targetChars) * 95)
+          );
+          setStandardizeProgress((prev) => Math.max(prev, pct));
         }
       );
       setStandardized(full);
+      setStandardizeProgress(100);
       toast.success("Standardized markdown ready.");
       await runAnalysis(full);
     } catch (e: unknown) {
@@ -301,6 +335,7 @@ export default function StudioPage() {
       toast.error(msg);
     } finally {
       setBusy(null);
+      setStandardizeProgress(0);
     }
   }, [parseResultState, form, runAnalysis]);
 
@@ -424,6 +459,7 @@ export default function StudioPage() {
           standardized={standardized}
           parsing={busy === "parsing"}
           parseStatus={parseStatus}
+          parseProgress={parseProgress}
           hasParsed={!!parseResultState}
           onDownload={downloadMd}
           onChange={editable ? onMarkdownEdit : undefined}
@@ -454,6 +490,7 @@ export default function StudioPage() {
           hasParsed={!!parseResultState}
           hasStandardized={!!standardized}
           busy={busy}
+          standardizeProgress={standardizeProgress}
           onStandardize={runStandardize}
         />
       </aside>

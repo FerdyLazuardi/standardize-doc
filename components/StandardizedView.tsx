@@ -45,13 +45,14 @@ export const StandardizedView = forwardRef<
     standardized: string;
     parsing: boolean;
     parseStatus: string;
+    parseProgress?: number;
     hasParsed: boolean;
     onDownload?: () => void;
     onChange?: (value: string | undefined) => void;
     previewFile?: PreviewFile | null;
   }
 >(function StandardizedView(
-  { standardized, parsing, parseStatus, hasParsed, onDownload, onChange, previewFile },
+  { standardized, parsing, parseStatus, parseProgress, hasParsed, onDownload, onChange, previewFile },
   ref
 ) {
   const [mode, setMode] = useState<ViewMode>("code");
@@ -196,6 +197,7 @@ export const StandardizedView = forwardRef<
             standardized={standardized}
             parsing={parsing}
             parseStatus={parseStatus}
+            parseProgress={parseProgress ?? 0}
             hasParsed={hasParsed}
             onChange={onChange}
             renderPreview={renderPreview}
@@ -224,6 +226,7 @@ function CodePane({
   standardized,
   parsing,
   parseStatus,
+  parseProgress,
   hasParsed,
   onChange,
   renderPreview,
@@ -232,41 +235,26 @@ function CodePane({
   standardized: string;
   parsing: boolean;
   parseStatus: string;
+  parseProgress: number;
   hasParsed: boolean;
   onChange?: (value: string | undefined) => void;
   renderPreview: boolean;
   onMount?: (editor: EditorInstance) => void;
 }) {
   if (parsing) {
-    // Try to extract "X/Y" from the status (compression phase emits it).
-    // Other phases (uploading, polling) show an indeterminate bar.
-    const match = parseStatus.match(/\((\d+)\s*\/\s*(\d+)\)/);
-    const percent = match
-      ? Math.min(
-          100,
-          Math.round((parseInt(match[1], 10) / parseInt(match[2], 10)) * 100)
-        )
-      : null;
-
+    const pct = Math.max(0, Math.min(100, Math.round(parseProgress)));
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
         <Loader2 className="w-7 h-7 text-accent animate-spin" />
-        <div className="text-sm font-medium text-text">Parsing your file…</div>
+        <div className="text-sm font-medium text-text">
+          Parsing your file… <span className="font-mono text-accent">{pct}%</span>
+        </div>
         <div className="w-full max-w-xs flex flex-col gap-1.5">
           <div className="progress-track">
-            {percent !== null ? (
-              <div className="progress-fill" style={{ width: `${percent}%` }} />
-            ) : (
-              <div className="progress-indeterminate" />
-            )}
+            <div className="progress-fill" style={{ width: `${pct}%` }} />
           </div>
-          <div className="flex justify-between items-center text-[11px] font-mono text-muted">
-            <span className="truncate text-left">
-              {parseStatus || "Working with LlamaParse"}
-            </span>
-            {percent !== null && (
-              <span className="text-text font-semibold ml-2">{percent}%</span>
-            )}
+          <div className="text-[11px] font-mono text-muted truncate text-left">
+            {parseStatus || "Working with LlamaParse"}
           </div>
         </div>
       </div>

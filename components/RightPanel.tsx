@@ -43,6 +43,7 @@ export type RightPanelProps = {
   hasParsed: boolean;
   hasStandardized: boolean;
   busy: null | "parsing" | "standardize" | "analyze" | "fixing";
+  standardizeProgress?: number;
   onStandardize: () => void;
 };
 
@@ -116,11 +117,18 @@ export function RightPanel(props: RightPanelProps) {
                 className={
                   showDone
                     ? "flex-[3] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white shadow-sm cursor-default"
-                    : `btn-primary flex-[3] ${standardizing ? "btn-progress" : ""} ${ctaHighlighted ? "btn-cta-pulse" : ""}`
+                    : `btn-primary flex-[3] relative overflow-hidden ${ctaHighlighted ? "btn-cta-pulse" : ""}`
                 }
                 disabled={showDone || ctaDisabled}
                 onClick={showDone ? undefined : props.onStandardize}
               >
+                {standardizing && (
+                  <span
+                    className="absolute left-0 bottom-0 h-1 bg-white/90 transition-[width] duration-300 ease-out"
+                    style={{ width: `${props.standardizeProgress ?? 0}%` }}
+                    aria-hidden
+                  />
+                )}
                 {showDone ? (
                   <>
                     <Check className="w-4 h-4" />
@@ -129,7 +137,9 @@ export function RightPanel(props: RightPanelProps) {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    {standardizing ? "Standardizing…" : "Standardize Markdown"}
+                    {standardizing
+                      ? `Standardizing ${props.standardizeProgress ?? 0}%…`
+                      : "Standardize Markdown"}
                   </>
                 )}
               </button>
