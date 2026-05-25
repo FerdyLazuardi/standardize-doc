@@ -56,7 +56,12 @@ export function RightPanel(props: RightPanelProps) {
   const retrievalDisabled = !props.hasStandardized;
   const ctaHighlighted =
     props.hasParsed && !props.hasStandardized && !props.busy;
-  const showDone = props.hasStandardized && !props.busy;
+  // Treat "analyze" and "fixing" as still-done so the button doesn't briefly
+  // flash back to "Standardize Markdown" during the post-success analysis.
+  const showDone =
+    props.hasStandardized &&
+    props.busy !== "standardize" &&
+    props.busy !== "parsing";
 
   const confirmRetry = () => {
     setRetryOpen(false);
@@ -118,7 +123,7 @@ export function RightPanel(props: RightPanelProps) {
                   showDone
                     ? "flex-[3] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white shadow-sm cursor-default"
                     : standardizing
-                    ? "flex-[3] relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold bg-zinc-200 text-zinc-900 cursor-wait"
+                    ? "flex-[3] relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold bg-zinc-400 text-white cursor-wait"
                     : `btn-primary flex-[3] ${ctaHighlighted ? "btn-cta-pulse" : ""}`
                 }
                 disabled={showDone || ctaDisabled}
@@ -126,7 +131,7 @@ export function RightPanel(props: RightPanelProps) {
               >
                 {standardizing && (
                   <span
-                    className="absolute left-0 top-0 bottom-0 bg-emerald-500/70 transition-[width] duration-300 ease-out"
+                    className="absolute left-0 top-0 bottom-0 bg-emerald-500 transition-[width] duration-300 ease-out"
                     style={{ width: `${props.standardizeProgress ?? 0}%` }}
                     aria-hidden
                   />

@@ -227,27 +227,34 @@ export default function StudioPage() {
         setParseStatus("Uploading to parser…");
         setParseProgress(55);
         const { job_id } = await parseStart(file);
-        setParseStatus("Parsing PDF…");
+        setParseStatus("Parsing on LlamaParse…");
         setParseProgress(60);
         toast.info(`LlamaParse job ${job_id} queued. Polling...`);
 
-        // Time-based monotonic curve from 60 → 95 while polling.
-        // 60 + 35 * elapsed / (elapsed + 15s) — starts fast, slows toward 95.
+        // Time-based monotonic curve from 60 → 95 while polling. Aggressive
+        // early growth so small files don't sit at 60% the whole time.
         const pollStart = Date.now();
         const result = await parsePollUntilDone(job_id, {
           intervalMs: 2000,
           timeoutMs: 180000,
-          onTick: (s) => {
+          onTick: () => {
             const elapsed = Date.now() - pollStart;
             const pct = Math.min(
               95,
-              Math.round(60 + 35 * (elapsed / (elapsed + 15000)))
+              Math.round(60 + 35 * (elapsed / (elapsed + 5000)))
             );
             setParseProgress((prev) => Math.max(prev, pct));
-            setParseStatus(`Status: ${s}`);
+            // Intentionally don't overwrite parseStatus with the raw
+            // LlamaParse status string — "Status: pending" looks bad. The
+            // static "Parsing on LlamaParse…" label is more useful.
           },
         });
         setParseProgress(100);
+        setParseStatus("Done");
+        // Hold at 100% long enough for the CSS width transition (300ms) to
+        // play out + a beat so the user actually perceives the full bar
+        // before the parsing pane unmounts and the editor takes over.
+        await new Promise((r) => setTimeout(r, 800));
         setParseResultState(result);
         const dropped = result.noise_stats.dropped_slides.length;
         toast.success(
