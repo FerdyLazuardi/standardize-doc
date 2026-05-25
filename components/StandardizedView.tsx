@@ -308,10 +308,6 @@ function CodePane({
           scrollBeyondLastLine: false,
           renderLineHighlight: "none",
           padding: { top: 12, bottom: 12 },
-          // Render the find widget (Ctrl+F) as a fixed overlay on the body
-          // instead of inside the editor's overflow-hidden container, so it
-          // doesn't get clipped or pushed off-screen near the top edge.
-          fixedOverflowWidgets: true,
         }}
       />
     );
@@ -347,7 +343,6 @@ function CodePane({
               scrollBeyondLastLine: false,
               renderLineHighlight: "none",
               padding: { top: 12, bottom: 12 },
-              fixedOverflowWidgets: true,
               contextmenu: false,
             }}
           />

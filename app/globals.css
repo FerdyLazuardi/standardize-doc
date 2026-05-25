@@ -188,15 +188,22 @@ pre,
   }
 }
 
-/* Monaco find / replace widget — Monaco renders it in <body> when
- * fixedOverflowWidgets is true. Bump z-index above sonner toaster
- * (which sits at 9999) so the close button isn't blocked by the toaster's
- * pointer-events container. */
-.monaco-editor-overflow-widgets-root {
-  z-index: 10000 !important;
+/* Monaco find / replace widget — keep it visually unobtrusive and clear of
+ * the very top edge so the close button is reachable. The default top
+ * offset and heavy drop-shadow make it feel like a modal hijack; we soften
+ * both. The duplicate "Escape" tooltip flicker came from a stacked hover
+ * region; collapsing pointer-events on Monaco's hidden hover overlay above
+ * the widget removes the second tooltip. */
+.monaco-editor .find-widget {
+  top: 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid #e4e4e7 !important;
 }
-.monaco-editor-overflow-widgets-root .find-widget {
-  z-index: 10000 !important;
+.monaco-editor .overflowingContentWidgets {
+  pointer-events: none;
+}
+.monaco-editor .overflowingContentWidgets > * {
+  pointer-events: auto;
 }
 
 /* Markdown preview */

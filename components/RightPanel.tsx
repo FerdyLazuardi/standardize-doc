@@ -123,7 +123,7 @@ export function RightPanel(props: RightPanelProps) {
                   showDone
                     ? "flex-[3] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 text-white shadow-sm cursor-default"
                     : standardizing
-                    ? "flex-[3] relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-semibold bg-zinc-400 text-white cursor-wait"
+                    ? "flex-[3] relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium bg-zinc-400 text-white cursor-wait"
                     : `btn-primary flex-[3] ${ctaHighlighted ? "btn-cta-pulse" : ""}`
                 }
                 disabled={showDone || ctaDisabled}
