@@ -17,6 +17,7 @@ export const maxDuration = 30;
 // browser to verify the deploy is reading the token correctly.
 export async function GET() {
   const token = process.env.BLOB_READ_WRITE_TOKEN ?? "";
+  const explicitStoreId = process.env.BLOB_STORE_ID ?? "";
   if (!token) {
     return NextResponse.json(
       {
@@ -31,15 +32,23 @@ export async function GET() {
   const parts = token.split("_");
   const looksValid =
     parts.length >= 5 && parts[0] === "vercel" && parts[1] === "blob";
+  const tokenStoreId = parts[3] ?? null;
+
+  const idsMatch =
+    !explicitStoreId || !tokenStoreId || explicitStoreId === tokenStoreId;
 
   return NextResponse.json({
     configured: true,
     looksValid,
     prefix: token.slice(0, 18) + "…",
-    storeIdGuess: parts[3] ?? null,
-    note: looksValid
-      ? "Token format looks valid. If uploads still 400, the token's store id may not match the store the SDK is calling."
-      : "Token format looks wrong — should be vercel_blob_rw_<storeId>_<secret>.",
+    tokenStoreId,
+    explicitStoreId: explicitStoreId || "(not set)",
+    idsMatch,
+    note: !looksValid
+      ? "Token format wrong — should be vercel_blob_rw_<storeId>_<secret>."
+      : !idsMatch
+        ? "MISMATCH: BLOB_STORE_ID and the store id inside BLOB_READ_WRITE_TOKEN don't match. Disconnect+reconnect the store in Vercel Storage tab to overwrite both consistently, then redeploy."
+        : "Looks healthy. If uploads still 400, the store may have been deleted server-side — recreate it.",
   });
 }
 
