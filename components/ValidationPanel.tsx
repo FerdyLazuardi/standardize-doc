@@ -15,12 +15,16 @@ const SEVERITY_LABEL: Record<string, string> = {
   info: "text-textSecondary",
 };
 
+// `bridge_sentence` is intentionally excluded: the validator's 3-line
+// look-back window is too tight to reliably detect bridges added by the
+// LLM, so the fix never "clears" and the auto-fix button gets stuck.
+// RAG impact is minimal when H1 headings are descriptive — keep it as an
+// info hint, just not auto-fixable.
 const FIXABLE_CHECKS = new Set([
   "frontmatter",
   "token_min",
   "token_max",
   "entity",
-  "bridge_sentence",
 ]);
 
 function issueToFix(it: ValidationIssue): AutoFixAction | null {
