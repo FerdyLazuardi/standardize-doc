@@ -234,6 +234,51 @@ Dialog/Roleplay clusters:
 - Bridge sentence ending \`:\` sebelum bullet list.
 - Bahasa sumber dipertahankan (jangan diterjemahkan).
 
+### Type 5: Product / Program
+
+*(e.g., internal products, training programs, financial products,
+internal tools — BMDP, Modal Cycle 0, A-Partner. Distinguishable from
+Type 1 because the focus is "what the product/program is and how to
+use it," not "what is prohibited.")*
+
+\`\`\`markdown
+# About [Product/Program Name] — [Entity Name]
+
+[2–3 kalimat: definisi produk/program, target audience, alasan
+[Entity Name] menyediakannya.]
+
+# Target & Eligibility for [Product Name] at [Entity Name]
+
+[Bridge sentence ending with \`:\`]
+
+- **Target user:** [siapa]
+- **Eligibility:** [syarat utama]
+- **Tidak berlaku untuk:** [eksklusi yang relevan]
+
+# Core Features of [Product Name] at [Entity Name]
+
+[Bridge sentence yang menyebut entity dan produk:]
+
+- **[Feature 1]:** [deskripsi singkat]
+- **[Feature 2]:** [deskripsi singkat]
+
+# How to Use [Product Name] at [Entity Name]
+
+Berikut alur penggunaan [Product Name] di [Entity Name]:
+
+1. **[Step 1]:** [detail]
+2. **[Step 2]:** [detail]
+3. **[Step 3]:** [detail]
+
+# Key Terms & Metrics for [Product Name]
+
+Berikut istilah dan metrik penting yang dipakai dalam pengelolaan
+[Product Name] di [Entity Name]:
+
+- **[Term 1]:** [definisi 1 baris]
+- **[Term 2]:** [definisi 1 baris]
+\`\`\`
+
 ---
 
 ## 4. Final Output Verification (Self-Check)

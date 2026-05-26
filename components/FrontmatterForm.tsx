@@ -12,6 +12,8 @@ export const TOPIC_OPTIONS = [
   "Policy / Compliance",
   "Company Profile / Culture",
   "Procedure / SOP",
+  "Product / Program",
+  "Script",
 ];
 
 export function FrontmatterForm({

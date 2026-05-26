@@ -11,11 +11,10 @@ const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
 type ViewMode = "code" | "compare" | "deck";
 
-export type PreviewFile = {
-  blob: Blob;
-  type: "pdf" | "pptx";
-  name: string;
-};
+export type PreviewFile =
+  | { kind: "pdf"; blob: Blob; name: string }
+  | { kind: "pptx"; blob: Blob; name: string }
+  | { kind: "xlsx"; sheets: { name: string; html: string }[]; name: string };
 
 export type StandardizedViewHandle = {
   jumpToLine: (line: number) => void;
@@ -63,11 +62,11 @@ export const StandardizedView = forwardRef<
   const editorRef = useRef<EditorInstance | null>(null);
   const decoRef = useRef<string[]>([]);
 
-  // Object URL for the deck preview. Recreated when previewFile changes;
-  // revoked on unmount or replacement to avoid leaks.
+  // Object URL for the deck preview. Only PDF and PPTX use blob URLs;
+  // xlsx renders inline HTML and doesn't need one.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!previewFile) {
+    if (!previewFile || previewFile.kind === "xlsx") {
       setPreviewUrl(null);
       return;
     }
@@ -139,15 +138,15 @@ export const StandardizedView = forwardRef<
             icon={<Columns2 className="w-3 h-3" />}
             label="Compare"
             disabled={!hasDeck}
-            disabledTitle="Upload a PDF / PPTX deck first to compare"
+            disabledTitle="Upload a PDF / PPTX / XLSX first to compare"
           />
           <ToggleButton
             active={mode === "deck"}
             onClick={() => setMode("deck")}
             icon={<FileText className="w-3 h-3" />}
-            label="Deck"
+            label="Source"
             disabled={!hasDeck}
-            disabledTitle="Upload a PDF / PPTX deck first"
+            disabledTitle="Upload a source file first"
           />
         </div>
 
@@ -367,7 +366,66 @@ function DeckPane({
   previewFile: PreviewFile | null;
   previewUrl: string | null;
 }) {
-  if (!previewFile || !previewUrl) {
+  // Sheet tabs for xlsx need their own state. Hook order has to stay stable,
+  // so this lives at the top of the component regardless of the early returns.
+  const [activeSheet, setActiveSheet] = useState<string | null>(null);
+  useEffect(() => {
+    if (previewFile?.kind === "xlsx" && previewFile.sheets.length > 0) {
+      setActiveSheet(previewFile.sheets[0].name);
+    } else {
+      setActiveSheet(null);
+    }
+  }, [previewFile]);
+
+  if (!previewFile) {
+    return (
+      <div className="h-full flex items-center justify-center px-6 text-center">
+        <div className="max-w-sm text-xs text-muted">
+          Upload a deck or script on the right panel to preview it here.
+        </div>
+      </div>
+    );
+  }
+
+  if (previewFile.kind === "xlsx") {
+    const sheets = previewFile.sheets;
+    const active = sheets.find((s) => s.name === activeSheet) ?? sheets[0];
+    if (!active) {
+      return (
+        <div className="h-full flex items-center justify-center px-6 text-center">
+          <div className="max-w-sm text-xs text-muted">
+            Spreadsheet has no usable sheets.
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="h-full flex flex-col min-h-0">
+        <div className="px-2 py-1.5 border-b border-border bg-surface flex gap-1 overflow-x-auto scrollbar-slim shrink-0">
+          {sheets.map((s) => (
+            <button
+              key={s.name}
+              onClick={() => setActiveSheet(s.name)}
+              className={`text-[11px] font-medium px-2.5 py-1 rounded-md whitespace-nowrap transition ${
+                s.name === active.name
+                  ? "bg-accent text-white"
+                  : "bg-bg text-textSecondary hover:bg-surface hover:text-text border border-border"
+              }`}
+              title={s.name}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+        <div
+          className="flex-1 min-h-0 overflow-auto scrollbar-slim p-3 xlsx-sheet-table"
+          dangerouslySetInnerHTML={{ __html: active.html }}
+        />
+      </div>
+    );
+  }
+
+  if (!previewUrl) {
     return (
       <div className="h-full flex items-center justify-center px-6 text-center">
         <div className="max-w-sm text-xs text-muted">
@@ -377,7 +435,7 @@ function DeckPane({
     );
   }
 
-  if (previewFile.type === "pptx") {
+  if (previewFile.kind === "pptx") {
     return (
       <div className="h-full flex flex-col items-center justify-center px-6 gap-3 text-center">
         <FileText className="w-9 h-9 text-muted" />

@@ -220,6 +220,35 @@ pre,
   content: none !important;
 }
 
+/* Spreadsheet preview tables. SheetJS sheet_to_html emits a bare <table>
+ * with inline xlsx classes; style it to feel native to the studio. */
+.xlsx-sheet-table table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  background: #ffffff;
+}
+.xlsx-sheet-table td,
+.xlsx-sheet-table th {
+  border: 1px solid #e4e4e7;
+  padding: 6px 10px;
+  vertical-align: top;
+  max-width: 480px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  color: #18181b;
+}
+.xlsx-sheet-table tr:first-child td,
+.xlsx-sheet-table tr:first-child th {
+  background: #fafafa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 /* Markdown preview */
 .md-preview {
   font-size: 13px;

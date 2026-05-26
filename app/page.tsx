@@ -117,11 +117,12 @@ export default function StudioPage() {
   const [retrieval, setRetrieval] = useState<RetrieveResult | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
-  const [previewFile, setPreviewFile] = useState<{
-    blob: Blob;
-    type: "pdf" | "pptx";
-    name: string;
-  } | null>(null);
+  const [previewFile, setPreviewFile] = useState<
+    | { kind: "pdf"; blob: Blob; name: string }
+    | { kind: "pptx"; blob: Blob; name: string }
+    | { kind: "xlsx"; sheets: { name: string; html: string }[]; name: string }
+    | null
+  >(null);
 
   const [busy, setBusy] = useState<Busy>(null);
   const [parseStatus, setParseStatus] = useState<string>("");
@@ -184,6 +185,11 @@ export default function StudioPage() {
         if (isXlsx) {
           setParseStatus("Reading spreadsheet…");
           setParseProgress(30);
+          // Auto-switch topic to Script so the standardizer applies Type 4.
+          // User can still override in the form afterwards.
+          if (form.topic !== "Script") {
+            setForm({ ...form, topic: "Script" });
+          }
           const { parseSpreadsheetToMarkdown } = await import(
             "@/lib/spreadsheet-parser"
           );
@@ -193,6 +199,11 @@ export default function StudioPage() {
           setParseStatus("Done");
           await new Promise((r) => setTimeout(r, 600));
           setParseResultState(result);
+          setPreviewFile({
+            kind: "xlsx",
+            sheets: result.sheets,
+            name: incoming.name,
+          });
           const dropped = result.noise_stats.dropped_slides.length;
           toast.success(
             `Parsed ${result.noise_stats.original_slides} sheet${
@@ -251,7 +262,7 @@ export default function StudioPage() {
         // For PPTX uploads we simply leave previewFile null so the Compare /
         // View Deck tabs remain disabled, but parsing/standardize still runs.
         if (isPdf) {
-          setPreviewFile({ blob: file, type: "pdf", name: incoming.name });
+          setPreviewFile({ kind: "pdf", blob: file, name: incoming.name });
         }
 
         setParseStatus("Uploading to parser…");
@@ -303,7 +314,7 @@ export default function StudioPage() {
         setParseProgress(0);
       }
     },
-    [compressEnabled]
+    [compressEnabled, form, setForm]
   );
 
   const runAnalysis = useCallback(
