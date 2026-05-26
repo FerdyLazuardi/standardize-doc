@@ -52,13 +52,20 @@ function hasBridgeSentence(text: string, listStartLine: number): boolean {
   const lines = text.split("\n");
   for (let j = listStartLine - 1; j >= Math.max(0, listStartLine - 3); j--) {
     if (j < 0 || j >= lines.length) continue;
-    const ln = lines[j].trim();
+    const raw = lines[j];
+    const ln = raw.trim();
     if (!ln) continue;
-    if (ln.startsWith("#") || ln.startsWith("-") || ln.startsWith("*") || ln.startsWith("+")) {
-      return false;
-    }
-    if (/^\s*\d+\.\s+/.test(ln)) return false;
-    if (ln.endsWith(":")) return true;
+    if (ln.startsWith("#")) return false;
+    // Real bullet lines need whitespace after the marker. `**bold**` lines
+    // start with `*` but aren't bullets — without this guard they'd be
+    // skipped and a valid bold-label bridge like `**3 Value Amartha:**`
+    // would be missed.
+    const isBullet = /^\s*[-*+]\s+/.test(raw) || /^\s*\d+\.\s+/.test(raw);
+    if (isBullet) return false;
+    // Strip trailing markdown emphasis before the colon check so that
+    // `**Label:**` is recognized as a bridge.
+    const stripped = ln.replace(/[*_`]+$/, "").trim();
+    if (stripped.endsWith(":")) return true;
     return false;
   }
   return false;
