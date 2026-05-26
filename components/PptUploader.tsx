@@ -28,8 +28,12 @@ export function PptUploader({
         );
         return;
       }
-      if (!name.endsWith(".pdf") && !name.endsWith(".pptx")) {
-        toast.error("Only .pdf and .pptx files are accepted.");
+      if (
+        !name.endsWith(".pdf") &&
+        !name.endsWith(".pptx") &&
+        !name.endsWith(".xlsx")
+      ) {
+        toast.error("Only .pdf, .pptx, and .xlsx files are accepted.");
         return;
       }
       setFilename(file.name);
@@ -58,7 +62,7 @@ export function PptUploader({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.pptx"
+        accept=".pdf,.pptx,.xlsx"
         className="hidden"
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
@@ -69,13 +73,13 @@ export function PptUploader({
           <Upload className="w-4 h-4 text-muted" />
         )}
         <span className="truncate">
-          {busy ? "Parsing…" : filename ?? "Drop a .pdf or .pptx here"}
+          {busy ? "Parsing…" : filename ?? "Drop a .pdf, .pptx, or .xlsx here"}
         </span>
       </div>
       <div className="text-xs text-muted mt-1.5">
         {busy
           ? status || "Working with LlamaParse…"
-          : "Or click to browse. .pdf or .pptx — deck preview is PDF only."}
+          : "Or click to browse. .pdf / .pptx → deck. .xlsx → script (per-row chunking). Preview is PDF only."}
       </div>
     </div>
   );

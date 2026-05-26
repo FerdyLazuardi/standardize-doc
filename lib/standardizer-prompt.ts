@@ -153,6 +153,87 @@ For questions regarding the [procedure], please contact the [Entity Name] suppor
 - **Email:** [email@address.com]
 \`\`\`
 
+### Type 4: Spreadsheet Script (lecturing monolog / roleplay dialog)
+
+*(e.g., training scripts authored in Google Sheets / Excel — narrator
+monologues per topic, or multi-character roleplay dialogues with stage
+directions.)*
+
+The input is NOT a finished knowledge document — it is an audio/video
+script. The pre-parser has already split each row (monolog) or each
+"Tahapan" cluster (dialog) into its own H1. **Preserve that boundary**:
+do not merge multiple input H1s, and do not split further unless an H1
+exceeds 300 tokens after cleaning. Target each H1 at 70–300 tokens.
+
+Output language must match input. Indonesian input → Indonesian output.
+
+#### Filler & noise that MUST be removed
+
+Lecturing/Monolog filler:
+- Greetings and sign-offs: "Hai", "Halo", "Selamat datang",
+  "Sampai jumpa lagi", "Tetap semangat", "Sampai ketemu di kelas",
+  "[Closing]"
+- Self-frame: "Pada sesi kali ini kita akan...", "Yuk simak",
+  "Yuk kita mulai journey-nya"
+- Audience prompts: "Sudah kebayang kan?", "Apakah kamu tau?",
+  trailing emoji (😉, 😀, 😊)
+- Sentence-final particles: "ya", "yaa", "kok", "nih", "deh", "loh",
+  "sih", "kan" — drop unless the kalimat genuinely interrogative
+
+Dialog/Roleplay filler:
+- Stage directions in parentheses: "(menghela napas)",
+  "(mengangguk tanda mengerti)", "(tertawa kecil)"
+- Verbal tics: "hmm... iya iya...", "Wah...", "Eh", "kayaknya"
+- Inter-character greetings: "Hai Yana", "Mbak Manda", "Eh kak"
+- Visual cues that only set the scene: "Yana terlihat sedang pusing
+  melihat data..." (drop unless the scene itself is the lesson)
+- Speaker labels (\`**BM Manda:**\`, \`**BP Yana:**\`) — these are
+  parser scaffolding, the standardized output must NOT contain them
+
+#### Knowledge that MUST be preserved
+
+- Definitions and concepts the narrator or any character explains
+- Step-by-step procedures ("Pertama, ... Kedua, ... Ketiga, ...")
+- Named frameworks and technical terms (e.g., BMDP, PAR, NPL, DPD,
+  EWS, Directive, Consultative, Participative, Delegative,
+  Engagement, Planning, Learning, Recognition)
+- Concrete examples that carry an instructional point
+- Stage names from the dialog (use them as section topics)
+
+#### Conversion rules
+
+Lecturing/Monolog rows:
+- Rewrite as one tight prose paragraph or a paragraph + a short
+  bulleted list (with bridge sentence) when the original enumerates.
+- Open with a contextual sentence that names the entity and the topic
+  (e.g., "Sebagai bagian dari [topic] di [Entity], ...").
+
+Dialog/Roleplay clusters:
+- The output is **declarative knowledge**, not a transcript. Never
+  emit \`Speaker: "..."\` lines.
+- Identify the principle, technique, or step the scene is teaching;
+  state it directly. Use bullets for technique steps when present.
+- Example transformation:
+
+  Input (raw dialog cluster, Tahapan = "Engagement"):
+  > **BM Manda:** Wah, wajar kalau kamu jadi pusing. Tapi bagus kamu
+  > udah inisiatif datengin langsung ke rumahnya.
+  > **BP Yana:** (menghela napas) Iya nih, Mbak, PAR kita bisa naik...
+
+  Output (prose):
+  > Pada tahap Engagement dalam mentoring di Amartha, Business Manager
+  > membuka percakapan dengan memvalidasi perasaan Business Partner
+  > dan mengapresiasi inisiatif yang sudah diambil. Tujuannya
+  > membangun rasa aman sebelum masuk ke pemecahan masalah PAR.
+
+#### Aturan ketat tetap berlaku
+
+- YAML frontmatter preserved exactly.
+- Tiap H1 70–300 token. Hard cap 512.
+- Entity name muncul di setiap H1 body.
+- Bridge sentence ending \`:\` sebelum bullet list.
+- Bahasa sumber dipertahankan (jangan diterjemahkan).
+
 ---
 
 ## 4. Final Output Verification (Self-Check)

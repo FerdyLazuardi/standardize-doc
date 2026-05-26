@@ -47,6 +47,9 @@ coverage/
 # Vercel
 .vercel/
 
+# Local sample spreadsheets / decks (internal Amartha training data)
+samples/
+
 # Python (legacy backend remnants)
 __pycache__/
 *.py[oc]

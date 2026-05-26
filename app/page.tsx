@@ -171,9 +171,39 @@ export default function StudioPage() {
         const lname = incoming.name.toLowerCase();
         const isPdf = lname.endsWith(".pdf");
         const isPptx = lname.endsWith(".pptx");
-        if (!isPdf && !isPptx) {
+        const isXlsx = lname.endsWith(".xlsx");
+        if (!isPdf && !isPptx && !isXlsx) {
           toast.error(
-            "Only .pdf and .pptx are supported. Save legacy .ppt as .pptx or PDF first."
+            "Only .pdf, .pptx, and .xlsx are supported. Save legacy .ppt as .pptx or PDF first."
+          );
+          return;
+        }
+
+        // Spreadsheet branch: parse client-side, skip compress/preview/R2/LlamaParse.
+        // Each row (monolog) or Tahapan cluster (dialog) becomes its own H1.
+        if (isXlsx) {
+          setParseStatus("Reading spreadsheet…");
+          setParseProgress(30);
+          const { parseSpreadsheetToMarkdown } = await import(
+            "@/lib/spreadsheet-parser"
+          );
+          setParseProgress(60);
+          const result = await parseSpreadsheetToMarkdown(incoming);
+          setParseProgress(100);
+          setParseStatus("Done");
+          await new Promise((r) => setTimeout(r, 600));
+          setParseResultState(result);
+          const dropped = result.noise_stats.dropped_slides.length;
+          toast.success(
+            `Parsed ${result.noise_stats.original_slides} sheet${
+              result.noise_stats.original_slides === 1 ? "" : "s"
+            } into ${result.noise_stats.kept_slides} chunk${
+              result.noise_stats.kept_slides === 1 ? "" : "s"
+            }${
+              dropped > 0
+                ? ` (skipped: ${result.noise_stats.dropped_slides.join(", ")})`
+                : ""
+            }.`
           );
           return;
         }
