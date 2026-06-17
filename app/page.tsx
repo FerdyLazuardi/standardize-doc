@@ -25,8 +25,10 @@ import {
   type StandardizedViewHandle,
 } from "@/components/StandardizedView";
 import { RightPanel } from "@/components/RightPanel";
+import DedupView from "@/components/DedupView";
 
 type Busy = null | "parsing" | "standardize" | "analyze" | "fixing";
+type Mode = "studio" | "dedup";
 
 function applyFrontmatterFix(markdown: string, form: FormState): string {
   const block = buildFrontmatterBlock({
@@ -100,6 +102,7 @@ function locateIssueLine(markdown: string, location: string): number {
 }
 
 export default function StudioPage() {
+  const [mode, setMode] = useState<Mode>("studio");
   const [compressEnabled, setCompressEnabled] = useState(true);
 
   const [form, setForm] = useState<FormState>({
@@ -509,49 +512,82 @@ export default function StudioPage() {
   const editable = busy !== "standardize" && busy !== "fixing" && busy !== "parsing";
 
   return (
-    <main className="min-h-screen p-3 md:p-4 grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 bg-bg md:max-h-screen">
-      <section className="md:col-span-8 flex flex-col gap-4 h-[70vh] md:h-auto md:max-h-[calc(100vh-2rem)] order-2 md:order-1">
-        <StandardizedView
-          ref={viewRef}
-          standardized={standardized}
-          parsing={busy === "parsing"}
-          parseStatus={parseStatus}
-          parseProgress={parseProgress}
-          hasParsed={!!parseResultState}
-          parsedMarkdown={parseResultState?.cleaned_markdown ?? ""}
-          onDownload={downloadMd}
-          onChange={editable ? onMarkdownEdit : undefined}
-          previewFile={previewFile}
-        />
-      </section>
+    <main className="min-h-screen p-3 md:p-4 bg-bg">
+      <div className="max-w-7xl mx-auto mb-4">
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setMode("studio")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              mode === "studio"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Studio
+          </button>
+          <button
+            onClick={() => setMode("dedup")}
+            className={`px-4 py-2 font-medium transition-colors ${
+              mode === "dedup"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Dedup
+          </button>
+        </div>
+      </div>
 
-      <aside className="md:col-span-4 flex flex-col md:max-h-[calc(100vh-2rem)] min-h-0 order-1 md:order-2">
-        <RightPanel
-          compressEnabled={compressEnabled}
-          setCompressEnabled={setCompressEnabled}
-          onUpload={onUpload}
-          uploadBusy={busy === "parsing"}
-          parseStatus={parseStatus}
-          form={form}
-          setForm={setForm}
-          validation={validation}
-          chunks={chunks}
-          retrieval={retrieval}
-          suggestedQuestions={suggestedQuestions}
-          questionsLoading={questionsLoading}
-          onRefreshQuestions={onRefreshQuestions}
-          onAutoFix={onAutoFix}
-          onJumpToIssue={onJumpToIssue}
-          onJumpToChunk={onJumpToChunk}
-          onJumpToResult={onJumpToResult}
-          onQuery={onQuery}
-          hasParsed={!!parseResultState}
-          hasStandardized={!!standardized}
-          busy={busy}
-          standardizeProgress={standardizeProgress}
-          onStandardize={runStandardize}
-        />
-      </aside>
+      <div className={mode === "studio" ? undefined : "hidden"}>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 md:max-h-screen">
+          <section className="md:col-span-8 flex flex-col gap-4 h-[70vh] md:h-auto md:max-h-[calc(100vh-2rem)] order-2 md:order-1">
+            <StandardizedView
+              ref={viewRef}
+              standardized={standardized}
+              parsing={busy === "parsing"}
+              parseStatus={parseStatus}
+              parseProgress={parseProgress}
+              hasParsed={!!parseResultState}
+              parsedMarkdown={parseResultState?.cleaned_markdown ?? ""}
+              onDownload={downloadMd}
+              onChange={editable ? onMarkdownEdit : undefined}
+              previewFile={previewFile}
+            />
+          </section>
+
+          <aside className="md:col-span-4 flex flex-col md:max-h-[calc(100vh-2rem)] min-h-0 order-1 md:order-2">
+            <RightPanel
+              compressEnabled={compressEnabled}
+              setCompressEnabled={setCompressEnabled}
+              onUpload={onUpload}
+              uploadBusy={busy === "parsing"}
+              parseStatus={parseStatus}
+              form={form}
+              setForm={setForm}
+              validation={validation}
+              chunks={chunks}
+              retrieval={retrieval}
+              suggestedQuestions={suggestedQuestions}
+              questionsLoading={questionsLoading}
+              onRefreshQuestions={onRefreshQuestions}
+              onAutoFix={onAutoFix}
+              onJumpToIssue={onJumpToIssue}
+              onJumpToChunk={onJumpToChunk}
+              onJumpToResult={onJumpToResult}
+              onQuery={onQuery}
+              hasParsed={!!parseResultState}
+              hasStandardized={!!standardized}
+              busy={busy}
+              standardizeProgress={standardizeProgress}
+              onStandardize={runStandardize}
+            />
+          </aside>
+        </div>
+      </div>
+
+      <div className={mode === "dedup" ? undefined : "hidden"}>
+        <DedupView />
+      </div>
     </main>
   );
 }

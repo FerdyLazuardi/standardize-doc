@@ -7,6 +7,15 @@
 
 import { uploadDirectToLlamaParse } from "./llamaparse-client";
 
+// Type-only imports: these MUST stay `import type` so the server-only modules
+// (which read process.env / call LLM SDKs) are erased from the client bundle.
+import type { JudgePairInput, JudgeVerdict } from "./dedup-judge";
+import type { RewriteResult } from "./dedup-rewrite";
+
+// Re-export so UI code can import these from "@/lib/api" alongside the rest.
+export type { JudgePairInput, JudgeVerdict } from "./dedup-judge";
+export type { RewriteResult } from "./dedup-rewrite";
+
 async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -285,5 +294,92 @@ export async function suggestQuestions(
   return jsonFetch("/api/suggest-questions", {
     method: "POST",
     body: JSON.stringify({ markdown, entity_name: entityName, topic }),
+  });
+}
+
+// === Cross-document duplicate detection ===
+
+export async function judgeDuplicates(
+  pairs: JudgePairInput[],
+  usePro = false
+): Promise<{ verdicts: JudgeVerdict[] }> {
+  return jsonFetch("/api/dedup-judge", {
+    method: "POST",
+    body: JSON.stringify({ pairs, use_pro: usePro }),
+  });
+}
+
+/**
+ * Judge candidate pairs in small concurrent batches with a one-shot retry per
+ * batch. A single oversized prompt risks a truncated JSON array that fails the
+ * whole scan; chunking bounds each call and isolates failures so one bad batch
+ * loses at most `batchSize` pairs instead of every result. Never throws — a
+ * batch that fails twice contributes no verdicts and the scan continues.
+ */
+export async function judgeDuplicatesBatched(
+  pairs: JudgePairInput[],
+  opts: {
+    batchSize?: number;
+    usePro?: boolean;
+    onBatch?: (completedBatches: number, totalBatches: number) => void;
+  } = {}
+): Promise<{ verdicts: JudgeVerdict[]; failedBatches: number }> {
+  const batchSize = opts.batchSize ?? 8;
+  const batches: JudgePairInput[][] = [];
+  for (let i = 0; i < pairs.length; i += batchSize) {
+    batches.push(pairs.slice(i, i + batchSize));
+  }
+  let completed = 0;
+  let failedBatches = 0;
+  const total = batches.length;
+
+  const runBatch = async (batch: JudgePairInput[]): Promise<JudgeVerdict[]> => {
+    try {
+      try {
+        return (await judgeDuplicates(batch, opts.usePro)).verdicts;
+      } catch {
+        return (await judgeDuplicates(batch, opts.usePro)).verdicts;
+      }
+    } catch {
+      failedBatches++;
+      return [];
+    } finally {
+      completed++;
+      opts.onBatch?.(completed, total);
+    }
+  };
+
+  // Bounded concurrency: process the batches in waves so we never have more
+  // than `concurrency` in-flight LLM calls (avoids provider rate limits).
+  const concurrency = 4;
+  const verdicts: JudgeVerdict[] = [];
+  for (let i = 0; i < batches.length; i += concurrency) {
+    const wave = batches.slice(i, i + concurrency);
+    const waveResults = await Promise.all(wave.map(runBatch));
+    for (const r of waveResults) verdicts.push(...r);
+  }
+  return { verdicts, failedBatches };
+}
+
+export async function rewriteDifferentiate(payload: {
+  a_text: string;
+  b_text: string;
+  shared_topic: string;
+  a_unique_angle: string;
+  b_unique_angle: string;
+  entity_name: string;
+  usePro?: boolean;
+}): Promise<RewriteResult> {
+  return jsonFetch("/api/dedup-rewrite", {
+    method: "POST",
+    body: JSON.stringify({
+      a_text: payload.a_text,
+      b_text: payload.b_text,
+      shared_topic: payload.shared_topic,
+      a_unique_angle: payload.a_unique_angle,
+      b_unique_angle: payload.b_unique_angle,
+      entity_name: payload.entity_name,
+      use_pro: !!payload.usePro,
+    }),
   });
 }
